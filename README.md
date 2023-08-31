@@ -4,7 +4,11 @@ Chroniques Oubliées Sheet Helper
 
 A companion MOD script for COC & COG Roll20 character sheets
 
-### Current version : 1.0.0
+### Current version : 1.1.0
+
+## 2023-08-31 - Version 1.1.0
+
+Added the gmsheet command
 
 ## 2023-08-14 - Version 1.0.0
 

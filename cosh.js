@@ -7,18 +7,34 @@
  * See documentation @ https://stephaned68.github.io/COCGSheetHelper/commands
  */
 
+/**
+ * @typedef {Object} Roll20Character
+ * @property {string}   _id                   A unique ID for this object. Globally unique across all objects in this game. Read-only.
+ * @property {string}   _type                 "character"	Can be used to identify the object type or search for the object. Read-only.
+ * @property {string}   avatar                URL to an image used for the character. See the note about avatar and imgsrc restrictions below.
+ * @property {string}   name                  Character name
+ * @property {string}   bio                   Character bio
+ * @property {string}   gmnotes               Notes on the character only viewable by the GM
+ * @property {boolean}  archived
+ * @property {string}   inplayerjournals      Comma-delimited list of player IDs ("all" for all players)
+ * @property {string}   controlledby          Comma-delimited list of player IDs able to control and edit ("all" for all players)
+ * @property {string}   _defaulttoken         A JSON string that contains the data for the Character's default token if one is set. Read-only.
+ */
+
+
 var COSH =
   COSH ||
   (function () {
     const stateKey = "COSH";
     const modName = `Mod:${stateKey}`;
-    const modVersion = "1.0.0";
+    const modVersion = "1.1.0";
     const modCmd = "!cosh";
+    const modHelpHandout = "Mod-COSheet-Help";
 
     /**
      * HTML helper functions
      */
-    const hh = {
+    const htmlHelper = {
       /**
        * Return a string of style definitions
        * @param {object} list key-value pairs
@@ -99,7 +115,7 @@ var COSH =
     };
 
     function buttonStyle(className) {
-      return `style="${ hh.getStyle(buttonClasses[className]) }`;
+      return `style="${ htmlHelper.getStyle(buttonClasses[className]) }`;
     }
 
     /**
@@ -127,6 +143,22 @@ var COSH =
       const dt = new Date(Date.now()).toISOString();
       return dt.split("T")[0] + " @ " + dt.split("T")[1].split(".")[0];
     }
+
+    const ABILITIES = {
+      COC: {
+        pj: [ "FORCE::FOR", "DEXTERITE::DEX", "CONSTITUTION::CON", "INTELLIGENCE::INT", "PERCEPTION::PER", "CHARISME::CHA" ],
+        pnj: [ "pnj_for::FOR", "pnj_dex::DEX", "pnj_con::CON", "pnj_int::INT", "pnj_per::PER", "pnj_cha::CHA" ],
+        vehicule: []
+      },
+      COG: {
+        pj: [ "FOR_TEST::FOR", "DEX_TEST::DEX", "CON_TEST::CON", "INT_TEST::INT", "PER_TEST::PER", "CHA_TEST::CHA" ],
+        pnj: [ "pnj_for::FOR", "pnj_dex::DEX", "pnj_con::CON", "pnj_int::INT", "pnj_per::PER", "pnj_cha::CHA" ],
+        vaisseau: [ "FOR_TEST::PUI", "DEX_TEST::MAN", "CON_TEST::COQ", "INT_TEST::ORD", "PER_TEST::SEN", "CHA_TEST::COM" ],
+        mecha: [ "mec_for::FOR", "mec_dex::DEX", "mec_con::CON", "mec_int::INT", "mec_per::PER", "mec_cha::CHA" ]
+      }
+    }
+
+    const ROLLS = [ "jet_for", "jet_dex", "jet_con", "jet_int", "jet_per", "jet_cha" ];
 
     /**
      * Return the chat string for a character's attribute
@@ -686,8 +718,7 @@ var COSH =
         // !cosh actions --caracs
         case "--caracs":
           const msgItems = [];
-          ["FOR", "DEX", "CON", "INT", "PER", "CHA"].forEach((carac) => {
-            let roll = `jet_${carac.toLowerCase()}`;
+          ROLLS.forEach((roll) => {
             msgItems.push(`[${carac}](~${charId}|${roll}" ${buttonStyle("flat")})`);
           });
           chatMsg = msgItems.join(" | ");
@@ -829,7 +860,7 @@ var COSH =
     }
 
     /**
-     * Find an attribute object
+     * Find one or more attribute object(s)
      * @param {object} props Properties of the attribute to find
      * @returns {object[]}
      */
@@ -842,12 +873,27 @@ var COSH =
     }
 
     /**
-     *
+     * Find a single attribute 
      * @param {object} props Properties of the attribute to find
-     * @returns
+     * @returns {object}
      */
     function findSingleAttribute(props) {
-      return findAttribute(props)[0] || null;
+      const [ attribute ] = findAttribute(props)
+      return attribute || null;
+    }
+
+    /**
+     * Return an attribute value
+     * @param {object} character character object
+     * @param {string} name name of attribute
+     * @param {string} valueType type of value current | max
+     * @returns {string} value of attribute
+     */
+    function attributeValue(character, name, valueType = "current") {
+      let value = "";
+      const attribute = findSingleAttribute({ _characterid: character.get("_id"), name: name });
+      if (attribute) value = attribute.get(valueType);
+      return value;
     }
 
     /**
@@ -1022,6 +1068,169 @@ var COSH =
     }
 
     /**
+     * Returns a list of attributes and values as HTML string
+     * @param {Roll20Character} character Roll20 character object
+     * @param {Array<string>} attributes List of attributes to retrieve
+     * @returns {string} HTML string
+     */
+    function getStats(character, attributes) {
+      let stats = [];
+
+      attributes.forEach(stat => {
+        let [ statName, statMax, statLabel ] = stat.split(":");
+        if (!statMax || statMax === "") statMax = "current";
+        if (!statLabel || statLabel === "") statLabel = statName;
+        const [ attribute ] = findAttribute({ name: statName, _characterid: character.get("_id") });
+        if (attribute) {
+          let span = "";
+          if (statMax === "current") {
+            span += `${statLabel}&nbsp;:&nbsp;`
+          }
+          span += `<b>${ attribute.get(statMax) }</b>`
+          const statSpan = htmlHelper.getElement(
+            "span",
+            span,
+            {}
+          );
+          stats.push(statSpan)
+        };
+      });
+
+      return stats;
+    }
+
+    /**
+     * Whispers a summary sheet to GM
+     * @param {Roll20Character} character Roll20 character object
+     */
+    function gmSheet(character) {
+      const type = attributeValue(character, "type_personnage") || "pj";
+
+      let charName = character.get("name");
+      if (type != "pj") charName += " (" + type +")";
+
+      let content = htmlHelper.getElement(
+        "div",
+        charName,
+        {
+          style: htmlHelper.getStyle({ 
+            backgroundColor: "darkgray", 
+            color: "white", 
+            textAlign: "center", 
+            borderRadius: "4px",
+          })
+        }
+      );
+
+      const CARACS = JSON.parse(attributeValue(character,"CARACS"));
+
+      const universe = state[stateKey].universe;
+
+      const abilities = [ ...ABILITIES[universe][type] ];
+
+      const rows = [];
+
+      switch (universe) {
+        
+        case "COC":
+          if (type === "vehicule") {
+            rows.push(
+              getStats(character, [ "FOV::FOR", "AGI" , "DEFV::DEF", "RDV::RD" ]).join(" ") + " " +
+              getStats(character, [ "PVV::PV", "PVV:max" ]).join(" / ")
+            );
+            break;
+          }
+
+          // physical stats
+          const phys = [ abilities[0], abilities[1], abilities[2] ];
+          const physMod = phys.map(a => a.split(":")[2]);
+          rows.push(getStats(character, phys).map((value, index) => {
+            let buff = attributeValue(character, `${physMod[index]}_BUFF`);
+            if (buff !== "" && buff !== "0") buff = "+" + buff;
+            return value += ` (${CARACS[physMod[index]]}${buff})`;
+          }).join(" "));
+          
+          //mental stats
+          const ment = [ abilities[3], abilities[4], abilities[5] ];
+          const mentMod = ment.map(a => a.split(":")[2]);
+          rows.push(getStats(character, ment).map((value, index) => {
+            let buff  = attributeValue(character, `${mentMod[index]}_BUFF`);
+            if (buff !== "" && buff !== "0") buff = "+" + buff;
+            return value += ` (${CARACS[mentMod[index]]}${buff})`;
+          }).join(" "));
+          break;
+        
+        case "COG":
+          rows.push(getStats(character, abilities).join(" "));
+
+          if (type === "vaisseau") {
+            rows.push(
+              getStats(character, [ "INITV::Init", "DEFRAP::DEFrap" , "DEFSOL::DEFsol" ]).join(" ") + " " +
+              getStats(character, [ "PV", "PV:max" ]).join(" / ") + " " +
+              "(" + getStats(character, [ "seuil_avarie::Av." ]).join("") + ")"
+            );
+          }
+
+          if (type === "mecha") {
+            rows.push(
+              getStats(character, [ "mec_init::Init", "mec_defrap::DEFrap" , "mec_defsol::DEFsol" ]).join(" ") + " " +
+              getStats(character, [ "mec_pv::PV", "mec_pv:max" ]).join(" / ")
+            );
+          }
+
+          break;
+      }
+
+      if (type === "pj") {
+        const combat = [ "INIT", "DEF", "RDS::RD" ];
+        if (universe === "COG") combat.push("DEP");
+        rows.push(
+          getStats(character, combat).join(" ") + " " +
+          getStats(character, [ "PV", "PV:max" ]).join(" / ") + " " +
+          "(" + getStats(character, [ "SEUILBG::BG" ]).join("") + ")"
+        );
+      }
+
+      if (type === "pnj") {
+        const combat = [ "pnj_init::Init", "pnj_def::DEF", "pnj_rd::RD" ];
+        if (universe === "COG") combat.push("pnj_dep::DEP");
+        rows.push(
+          getStats(character, combat).join(" ") + " " +
+          getStats(character, [ "pnj_pv::PV", "pnj_pv:max" ]).join(" / ") + " " +
+          "(" + getStats(character, [ "pnj_sbg::BG" ]).join("") + ")"
+        );
+      }
+
+      rows.forEach(row => {
+        content += htmlHelper.getElement(
+          "div",
+          row,
+          {
+            style: htmlHelper.getStyle({
+              fontSize: "smaller",
+              textAlign: "justify"
+            })
+          }
+        );
+      });
+
+      const html = htmlHelper.getElement(
+        "div",
+        content,
+        {
+          style: htmlHelper.getStyle({ 
+            border: "1px solid black",
+            padding: "2px",
+            borderRadius: "4px",
+            boxShadow: "2px 2px 2px 1px rgba(0, 0, 0, 0.2)",
+          })
+        }
+      )
+
+      sendChat(modName,"/w gm " + html);
+    }
+
+    /**
      * Process stats roll command
      * !cosh stats value1 value2 value3
      *   Determine the six stats values from 2d6 rolls
@@ -1046,13 +1255,13 @@ var COSH =
         statValues.push(19 - roll);
       }
 
-      let message =
+      let chatMsg =
         "&{template:co1} {{subtags=Tirage}} {{name=Caractéristiques}} {{desc=";
       for (const stat of statValues) {
-        message += `[[${stat}]] `;
+        chatMsg += `[[${stat}]] `;
       }
-      message += "}}";
-      sendChat(modName, message);
+      chatMsg += "}}";
+      sendChat(modName, chatMsg);
     }
 
     /**
@@ -1060,7 +1269,6 @@ var COSH =
      */
     function configDisplay() {
       let helpMsg = `/w gm &{template:default} {{name=${modName} v${modVersion} Config}}`;
-      log(state[stateKey])
       const univ = state[stateKey].universe;
       helpMsg += `{{Univers=*${univ}* `;
       if (univ === "COC") {
@@ -1123,12 +1331,20 @@ var COSH =
           description: "followed by..." 
         },
         {
+          command: "actions",
+          description: "To display PC/NPC actions menus in chat",
+        },
+        {
           command: "config",
           description: "To configure the script"
         },
         {
-          command: "actions",
-          description: "To display PC/NPC actions menus in chat",
+          command: "debug",
+          description: "To send token object data to API console",
+        },
+        {
+          command: "gmsheet",
+          description: "To display a summary stat-block in the chat",
         },
         {
           command: "token",
@@ -1137,10 +1353,6 @@ var COSH =
         {
           command: "stats",
           description: "To roll PC stats"
-        },
-        {
-          command: "debug",
-          description: "To send token object data to API console",
         },
       ].forEach((help) => {
         helpMsg += `{{${help.command}=${help.description} }}`;
@@ -1194,6 +1406,14 @@ var COSH =
             );
           }
           break;
+          case "gmsheet":
+            token = singleToken(msg, tokens);
+            if (!token) {
+              break;
+            }
+            character = getCharacterFromToken(token);
+            gmSheet(character);
+            break;
         case "token":
           token = singleToken(msg, tokens);
           if (!token) {
@@ -1214,6 +1434,47 @@ var COSH =
 
     function migrateState() {
       state[stateKey].version = modVersion;
+    }
+
+    function helpHandout() {
+      let [ helpHandout ] = findObjs({
+        _type:	"handout",
+        name: modHelpHandout
+      });
+      if (helpHandout === undefined) {
+        helpHandout = createObj("handout", {
+          name: modHelpHandout,
+        });
+      }
+      if (helpHandout && helpHandout.get("gmnotes") === modVersion) return;
+      if (helpHandout) {
+        helpHandout.set("notes", `
+        <h1>COSheet MOD script v${modVersion}</h1>
+        <p>par stephaned68</p>
+        <hr>
+        <h2>Commandes</h2>
+        <p>Ces commandes nécessitent qu'un jeton représentant un personnage soit sélectionné.</p>
+        <code>!cosh actions --attaques</code>
+        <p>Affiche un menu de chat avec la liste des attaques/armes.</p>
+        <code>!cosh actions --voies</code>
+        <p>Affiche un menu de chat avec la liste des voies.</p>
+        <code>!cosh actions --voie #</code>
+        <p>Affiche un menu de chat avec la liste des capacités de la voie no #.</p>
+        <code>!cosh actions --competences</code>
+        <p>Affiche un menu de chat avec la liste des jets de capacités.</p>
+        <code>!cosh gmsheet</code>
+        <p>Affiche un "stat-block" synthétique des attributs du personnage.</p>
+        <code>!cosh token --set:+xxx,+yyyy,-zzzz</code>
+        <ul>
+          <li>Active les marqueurs de jeton préfixés par + </li>
+          <li>Désactive les marqueurs de jeton préfixés par - </li>
+        </ul>
+        <p>Chaque marqueur peut être suffixé par =n (où 1 &le; n &le; 9) pour ajouter un badge numérique au marqueur</p>
+        <code>!cosh stats</code>
+        <p>Affiche un tirage de caractéristiques dans le chat.</p>
+        `);
+        helpHandout.set("gmnotes", modVersion);
+      }
     }
 
     function checkInstall() {
@@ -1247,7 +1508,62 @@ var COSH =
         migrateState();
       }
 
+      helpHandout();
+
       sendLog(state[stateKey]);
+    }
+
+    /**
+     * Setup configuration for player
+     * @param {object} msg Roll20 message object
+     */
+    function playerSetup(msg) {
+            
+      // get player color
+      const [ player ] = findObjs({
+        _type: "player",
+        _id: msg.playerid
+      });
+      if (player && player.color !== "transparent") {
+        const backColor = player.get("color");
+        buttonClasses.transparent.backgroundColor = backColor;
+        buttonClasses.flat.backgroundColor = backColor;
+      }
+
+    }
+
+    /**
+     * Handle chat messages
+     * @param {object} msg Roll20 chat message object
+     */
+    function handleInput(msg) {
+
+      playerSetup(msg);
+
+      // process API commands
+      const [ cmd ] = msg.content.replace(/<br\/>/g, "").split(/\s+/);
+      if (msg.type === "api" && cmd.indexOf(modCmd) === 0) {
+        processCmd(msg);
+      }
+
+    }
+
+    /**
+     * Send ready message to chat
+     */
+    function readyMessage() {
+
+      let html = htmlHelper.getElement("strong", "READY");
+      html = htmlHelper.getElement("span", html, {
+        style: htmlHelper.getStyle({
+          backgroundColor: "green",
+          color: "white",
+          padding: "5px",
+          borderRadius: "5px",
+        }),
+      });
+      sendChat(modName, "/w gm " + html);
+
     }
 
     function registerEventHandlers() {
@@ -1255,33 +1571,9 @@ var COSH =
       /**
        * Wire-up event for API chat message
        */
-      on("chat:message", function (msg) {
+      on("chat:message", handleInput);
 
-        const [ player ] = findObjs({
-          _type: "player",
-          _id: msg.playerid
-        });
-        if (player && player.color !== "transparent") {
-          const backColor = player.get("color");
-          log(backColor);
-          buttonClasses.transparent.backgroundColor = backColor;
-          buttonClasses.flat.backgroundColor = backColor;
-        }
-
-        const [ cmd ] = msg.content.replace(/<br\/>/g, "").split(/\s+/);
-        if (msg.type === "api" && cmd.indexOf(modCmd) === 0) processCmd(msg);
-      });
-
-      let html = hh.getElement("strong", "READY");
-      html = hh.getElement("span", html, {
-        style: hh.getStyle({
-          backgroundColor: "green",
-          color: "white",
-          padding: "5px",
-          borderRadius: "5px",
-        }),
-      });
-      sendChat(COSH.name, "/w gm " + html);
+      readyMessage();
     }
 
     return {
