@@ -1,0 +1,23 @@
+{
+  "name": "COCGSheetHelper",
+  "script": "cosh.js",
+  "version": "1.00",
+  "previousversions": [],
+  "description": "A .",
+  "authors": "stephaned68",
+  "roll20userid": "84776",
+  "useroptions": [
+    {
+      "name": "universe",
+      "type": "select",
+      "options": [ "COC", "COG" ],
+      "default": "COG",
+      "description": "Setting de la partie"
+    }
+  ],
+  "dependencies": [],
+  "modifies": {
+    
+  },
+  "conflicts": []
+}

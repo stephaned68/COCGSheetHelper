@@ -27,9 +27,19 @@ var COSH =
   (function () {
     const stateKey = "COSH";
     const modName = `Mod:${stateKey}`;
-    const modVersion = "1.1.0";
+    const modVersion = "1.10";
     const modCmd = "!cosh";
     const modHelpHandout = "Mod-COSheet-Help";
+
+    const modState = {
+      version: modVersion,
+      universe: "COG",
+      whisper: false,
+      logging: false,
+      hasCOGCrew: false,
+      hasChatSetAttr: false,
+      hasTokenMod: false,
+    };
 
     /**
      * HTML helper functions
@@ -1479,15 +1489,7 @@ var COSH =
 
     function checkInstall() {
       if (!state[stateKey] || !Object.keys(state[stateKey]).includes("version")) {
-        state[stateKey] = {
-          version: modVersion,
-          universe: "COC",
-          whisper: false,
-          logging: false,
-          hasCOGCrew: false,
-          hasChatSetAttr: false,
-          hasTokenMod: false,
-        };
+        state[stateKey] = modState;
         sendChat(COSH.name, `/w gm Type '${modCmd} config' to configure the script`);
       }
 
