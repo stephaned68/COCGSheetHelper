@@ -1,18 +1,18 @@
 # COSH
 
-Chroniques Oubliées Sheet Helper
+Chroniques Oubliées _**Sheet Helper**_
 
-A companion MOD script for COC & COG Roll20 character sheets
+Script MOD compagnon pour les fiches de personnage Roll20 COC & COG
 
 ### Current version : 1.10
 
 ## 2023-08-31 - Version 1.10
 
-Added the gmsheet command
+- Ajout de la commande <kbd>gmsheet</kbd>
 
 ## 2023-08-14 - Version 1.00
 
-Initial release of the script
+- Version initiale du script
 
 ## Liste des commandes
 
