@@ -52,6 +52,12 @@ Envoie des données de debogage à la console API
 
 ---
 
+    !cosh gmsheet
+
+Murmure au MJ un "stat-block" de la fiche de personnage
+
+---
+
     !cosh help
 
 Affiche un menu de chat avec de l'aide sur les commandes
