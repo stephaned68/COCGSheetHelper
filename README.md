@@ -1,6 +1,6 @@
-# COSH
+# COSH 
 
-Chroniques Oubliées _**Sheet Helper**_
+### _Chroniques Oubliées Sheet Helper_
 
 Script MOD compagnon pour les fiches de personnage Roll20 COC & COG
 
