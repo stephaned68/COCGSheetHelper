@@ -4,6 +4,9 @@ Chroniques Oubliées _**Sheet Helper**_
 
 Script MOD compagnon pour les fiches de personnage Roll20 COC & COG
 
+Au premier lancement d'une partie après installation du script, ce dernier crée une aide de jeu (handout) résumant les commandes disponibles. Celles-ci sont également détaillées ci-dessous.
+
+
 ### Current version : 1.10
 
 ## 2023-08-31 - Version 1.10
@@ -24,7 +27,7 @@ Affiche un menu de chat avec les voies possédées
 
     !cosh actions --voies #
 
-Affiche un menu de chat avec les capacitiés possédées dans la voie #
+Affiche un menu de chat avec les capacités possédées dans la voie #
 
 ---
 
