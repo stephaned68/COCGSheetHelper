@@ -19,7 +19,7 @@ Au premier lancement d'une partie après installation du script, ce dernier cré
 - Ajout d'une macro **cosh-create** simplifiant l'utilisation de la commande <kbd>create</kbd>
   - Ajout d'un bouton sur le menu de configuration permettant de créer la macro
   - Nouvelle commande <kbd>config --macro</kbd> de création de la macro
-- Réintégration de la commande <kbd>actions --caracs</kbd>
+- Réintégration de la commande <kbd>actions --caracs</kbd> permettant l'affichage d'un menu de chat pour les jets de caractéristiques
 
 ## 2023-08-31 - Version 1.10
 

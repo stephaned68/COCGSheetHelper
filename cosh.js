@@ -1,10 +1,10 @@
 /**
  * COSheetHelper : COC & COG sheets helper functions
- * Version : 1.0.0
- * Last updated : 2023-08-14
+ * Version : 1.2.0
+ * Last updated : 2023-09-10
  * Usage :
  * !cosh <function> <arguments>
- * See documentation @ https://stephaned68.github.io/COCGSheetHelper/commands
+ * See documentation @ https://github.com/stephaned68/COCGSheetHelper#readme
  */
 
 /**
