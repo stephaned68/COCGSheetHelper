@@ -68,6 +68,15 @@ Affiche un menu de chat pour configurer le script MOD
 
 ---
 
+    !cosh create {type} {nom}
+
+Crée une fiche de personnage du type indiqué, avec le nom indiqué, visible et controlable par tous les joueurs
+- Types communs : <kbd>pj</kbd>, <kbd>pnj</kbd>
+- Type COC : <kbd>vehicule</kbd>
+- Types COG : <kbd>vaisseau</kbd>, <kbd>mecha</kbd>
+
+---
+
     !cosh debug
 
 Envoie des données de debogage à la console API
