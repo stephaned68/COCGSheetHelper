@@ -14,8 +14,9 @@ Au premier lancement d'une partie après installation du script, ce dernier cré
 - Ajout de la commande <kbd>create</kbd> pour créer des fiches
   - <kbd>create pj _nom du PJ_</kbd> pour créer un personnage
   - <kbd>create pnj _nom du PNJ_</kbd> pour créer un PNJ
-  - <kbd>create vaisseau _nom du vaisseau_</kbd> pour créer un vaisseau
-  - <kbd>create mecha _nom du mecha_</kbd> pour créer un mécha
+  - <kbd>create vehicule _nom du véhicule_</kbd> pour créer un véhicule (COC)
+  - <kbd>create vaisseau _nom du vaisseau_</kbd> pour créer un vaisseau (COG)
+  - <kbd>create mecha _nom du mecha_</kbd> pour créer un mécha (COG)
 - Ajout d'une macro **cosh-create** simplifiant l'utilisation de la commande <kbd>create</kbd>
   - Ajout d'un bouton sur le menu de configuration permettant de créer la macro
   - Nouvelle commande <kbd>config --macro</kbd> de création de la macro

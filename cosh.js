@@ -1317,11 +1317,14 @@ var COSH =
         name: modCreateMacro
       });
       if (createMacro === undefined) {
-        sendLog("createMacro")
+        let action = "!cosh create ?{Type ?|Personnage,pj|PNJ,pnj";
+        if (state[stateKey].universe === "COG") action+="|Vaisseau,vaisseau|Mécha,mecha}";
+        else action+="|Véhicule,vehicule}";
+        action += " ?{Nom ?}"
         createMacro = createObj("macro", {
           playerid: playerId,
           name: modCreateMacro,
-          action: "!cosh create ?{Type ?|Personnage,pj|PNJ,pnj|Vaisseau,vaisseau|Mécha,mecha} ?{Nom ?}",
+          action: action,
           visibleto: "all",
           istokenaction: false
         });
