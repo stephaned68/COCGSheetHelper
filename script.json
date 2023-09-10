@@ -1,9 +1,9 @@
 {
   "name": "COCGSheetHelper",
   "script": "cosh.js",
-  "version": "1.00",
+  "version": "1.20",
   "previousversions": [],
-  "description": "A .",
+  "description": "A MOD script with helper functions for the CO Contemporain and CO Galactiques sheets.",
   "authors": "stephaned68",
   "roll20userid": "84776",
   "useroptions": [
