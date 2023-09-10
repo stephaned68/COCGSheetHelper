@@ -7,7 +7,19 @@ Script MOD compagnon pour les fiches de personnage Roll20 COC & COG
 Au premier lancement d'une partie après installation du script, ce dernier crée une aide de jeu (handout) résumant les commandes disponibles. Celles-ci sont également détaillées ci-dessous.
 
 
-### Current version : 1.10
+### Current version : 1.20
+
+## 2023-09-10 - Version 1.20
+
+- Ajout de la commande <kbd>create</kbd> pour créer des fiches
+  - <kbd>create pj _nom du PJ_</kbd> pour créer un personnage
+  - <kbd>create pnj _nom du PNJ_</kbd> pour créer un PNJ
+  - <kbd>create vaisseau _nom du vaisseau_</kbd> pour créer un vaisseau
+  - <kbd>create mecha _nom du mecha_</kbd> pour créer un mécha
+- Ajout d'une macro **cosh-create** simplifiant l'utilisation de la commande <kbd>create</kbd>
+  - Ajout d'un bouton sur le menu de configuration permettant de créer la macro
+  - Nouvelle commande <kbd>config --macro</kbd> de création de la macro
+- Réintégration de la commande <kbd>actions --caracs</kbd>
 
 ## 2023-08-31 - Version 1.10
 

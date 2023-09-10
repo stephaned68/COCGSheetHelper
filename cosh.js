@@ -27,7 +27,7 @@ var COSH =
   (function () {
     const stateKey = "COSH";
     const modName = `Mod:${stateKey}`;
-    const modVersion = "1.10";
+    const modVersion = "1.20";
     const modCmd = "!cosh";
     const modHelpHandout = "Mod-COSheet-Help";
     const modCreateMacro = "cosh-create";
