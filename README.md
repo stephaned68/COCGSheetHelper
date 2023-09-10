@@ -43,6 +43,12 @@ Affiche un menu de chat avec la liste des attaques
 
 ---
 
+    !cosh actions --caracs
+
+Affiche un menu de chat avec la liste des tests de caractéristiques
+
+---
+
     !cosh config
 
 Affiche un menu de chat pour configurer le script MOD

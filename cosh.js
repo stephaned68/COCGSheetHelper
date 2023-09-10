@@ -30,6 +30,7 @@ var COSH =
     const modVersion = "1.10";
     const modCmd = "!cosh";
     const modHelpHandout = "Mod-COSheet-Help";
+    const modCreateMacro = "cosh-create";
 
     const modState = {
       version: modVersion,
@@ -729,12 +730,13 @@ var COSH =
         case "--caracs":
           const msgItems = [];
           ROLLS.forEach((roll) => {
+            const carac = roll.split("_")[1].toUpperCase();
             msgItems.push(`[${carac}](~${charId}|${roll}" ${buttonStyle("flat")})`);
           });
           chatMsg = msgItems.join(" | ");
           chatMsg =
             whisper(toGM, charName) +
-            `&{template:co1} {{perso=${charName}}} {{subtag=Tests}} {{name=Caractéristiques}} {{desc=${chatMsg} }}`;
+            `&{template:co1} @{${charName}|token_dsp} {{perso=${charName}}} {{subtags=Tests}} {{name=Caractéristiques}} {{desc=${chatMsg} }}`;
           break;
 
         // !cosh actions --attaques
@@ -1077,6 +1079,41 @@ var COSH =
       setMarkers(tokenObj, characterObj, markerOps);
     }
 
+    function createSheet(args) {
+      let [ charType, charName ] = args;
+
+      charType = charType || "pj";
+      const charVisibility = charType === "pj" ? "all" : "";
+      
+      const character = createObj("character", {
+        name: charName,
+        archived: false,
+        inplayerjournals: charVisibility,
+        "controlledby": charVisibility
+      });
+      if (!character) {
+        clog("");
+        return;
+      }
+
+      const charId = character.get("id");
+
+      let attrib = null;
+
+      attrib = createObj("attribute", {
+        _characterid: charId,
+        name: "type_personnage",
+        current: charType
+      });
+
+      attrib = createObj("attribute", {
+        _characterid: charId,
+        name: "type_fiche",
+        current: charType
+      });
+
+    }
+
     /**
      * Returns a list of attributes and values as HTML string
      * @param {Roll20Character} character Roll20 character object
@@ -1274,6 +1311,23 @@ var COSH =
       sendChat(modName, chatMsg);
     }
 
+    function createMacro(playerId) {
+      let [ createMacro ] = findObjs({
+        _type:	"macro",
+        name: modCreateMacro
+      });
+      if (createMacro === undefined) {
+        sendLog("createMacro")
+        createMacro = createObj("macro", {
+          playerid: playerId,
+          name: modCreateMacro,
+          action: "!cosh create ?{Type ?|Personnage,pj|PNJ,pnj|Vaisseau,vaisseau|Mécha,mecha} ?{Nom ?}",
+          visibleto: "all",
+          istokenaction: false
+        });
+      }
+    }
+
     /**
      * Display script configuration
      */
@@ -1288,6 +1342,7 @@ var COSH =
       }
       helpMsg += `}} {{Msg privés=*${state[stateKey].whisper}* [Toggle](!cosh config --whisper)}}`;
       helpMsg += `{{Logging=*${state[stateKey].logging}* [Toggle](!cosh config --log)}}`;
+      helpMsg += `{{Macro=[Création](!cosh config --macro)}}`;
       sendChat(modName, helpMsg);
     }
 
@@ -1296,7 +1351,7 @@ var COSH =
      * !cosh config [...]
      * @param {string[]} args Chat command arguments
      */
-    function configSetup(args) {
+    function configSetup(args, playerId) {
       const [ option, value ] = args;
       switch (option) {
         case "--universe":
@@ -1307,6 +1362,9 @@ var COSH =
           break;
         case "--log":
           state[stateKey].logging = !state[stateKey].logging;
+          break;
+        case "--macro":
+          createMacro(playerId);
           break;
         default:
           break;
@@ -1393,7 +1451,7 @@ var COSH =
           sendChat(modName, "/w gm Token data dumped to console");
           break;
         case "config":
-          configSetup(args);
+          configSetup(args, msg.playerid);
           break;
         case "actions":
           character = getCharacter(getCharacterId(args));
@@ -1416,14 +1474,17 @@ var COSH =
             );
           }
           break;
-          case "gmsheet":
-            token = singleToken(msg, tokens);
-            if (!token) {
-              break;
-            }
-            character = getCharacterFromToken(token);
-            gmSheet(character);
+        case "create":
+          createSheet(args);
+          break;
+        case "gmsheet":
+          token = singleToken(msg, tokens);
+          if (!token) {
             break;
+          }
+          character = getCharacterFromToken(token);
+          gmSheet(character);
+          break;
         case "token":
           token = singleToken(msg, tokens);
           if (!token) {
@@ -1456,8 +1517,11 @@ var COSH =
           name: modHelpHandout,
         });
       }
-      if (helpHandout && helpHandout.get("gmnotes") === modVersion) return;
-      if (helpHandout) {
+      if (!helpHandout) return;
+
+      helpHandout.get("gmnotes", function (gmNotes) {
+        if (gmNotes === modVersion) return;
+
         helpHandout.set("notes", `
         <h1>COSheet MOD script v${modVersion}</h1>
         <p>par stephaned68</p>
@@ -1484,7 +1548,7 @@ var COSH =
         <p>Affiche un tirage de caractéristiques dans le chat.</p>
         `);
         helpHandout.set("gmnotes", modVersion);
-      }
+      });
     }
 
     function checkInstall() {
