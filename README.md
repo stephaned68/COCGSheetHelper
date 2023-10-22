@@ -7,7 +7,17 @@ Script MOD compagnon pour les fiches de personnage Roll20 COC & COG
 Au premier lancement d'une partie après installation du script, ce dernier crée une aide de jeu (handout) résumant les commandes disponibles. Celles-ci sont également détaillées ci-dessous.
 
 
-### Current version : 1.20
+### Current version : 1.30
+
+## 2023-10-22 - Version 1.30
+
+- Ajout de la création automatique de plusieurs macros
+  - <kbd>cosh-voies</kbd>       macro d'affichage des voies
+  - <kbd>cosh-capas</kbd>       macro d'affichage des jets de capacités
+  - <kbd>cosh-attaques</kbd>    macro d'affichage des attaques
+  - <kbd>cosh-caracs</kbd>      macro d'affichage des jets de caractéristiques
+  - <kbd>cosh-create</kbd>      macro d'appel de la création du fiche
+- 
 
 ## 2023-09-10 - Version 1.20
 

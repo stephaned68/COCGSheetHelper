@@ -1,7 +1,7 @@
 /**
  * COSheetHelper : COC & COG sheets helper functions
- * Version : 1.2.0
- * Last updated : 2023-09-10
+ * Version : 1.3.0
+ * Last updated : 2023-10-22
  * Usage :
  * !cosh <function> <arguments>
  * See documentation @ https://github.com/stephaned68/COCGSheetHelper#readme
@@ -27,10 +27,9 @@ var COSH =
   (function () {
     const stateKey = "COSH";
     const modName = `Mod:${stateKey}`;
-    const modVersion = "1.20";
+    const modVersion = "1.30";
     const modCmd = "!cosh";
     const modHelpHandout = "Mod-COSheet-Help";
-    const modCreateMacro = "cosh-create";
 
     const modState = {
       version: modVersion,
@@ -169,7 +168,44 @@ var COSH =
       }
     }
 
-    const ROLLS = [ "jet_for", "jet_dex", "jet_con", "jet_int", "jet_per", "jet_cha" ];
+    const ROLLS = {
+      pj: [ "jet_for", "jet_dex", "jet_con", "jet_int", "jet_per", "jet_cha" ],
+      pnj: [ "pnj_for", "pnj_dex", "pnj_con", "pnj_int", "pnj_per", "pnj_cha" ],
+    };
+
+    const MACROS = [ 
+      { name: "cosh-voies",   action: "!cosh actions --voies" },
+      { name: "cosh-capas",  action: "!cosh actions --competences" }, 
+      { name: "cosh-attaques",    action: "!cosh actions --attaques" }, 
+      { name: "cosh-caracs",   action: "!cosh actions --caracs" }, 
+      { name: "cosh-create",  action: coshCreateAction } 
+    ];
+
+    const HELP_CONTENT = `
+    <h1>COSheet MOD script v${modVersion}</h1>
+    <p>par stephaned68</p>
+    <hr>
+    <h2>Commandes</h2>
+    <p>Ces commandes nécessitent qu'un jeton représentant un personnage soit sélectionné.</p>
+    <code>!cosh actions --attaques</code>
+    <p>Affiche un menu de chat avec la liste des attaques/armes.</p>
+    <code>!cosh actions --voies</code>
+    <p>Affiche un menu de chat avec la liste des voies.</p>
+    <code>!cosh actions --voie #</code>
+    <p>Affiche un menu de chat avec la liste des capacités de la voie no #.</p>
+    <code>!cosh actions --competences</code>
+    <p>Affiche un menu de chat avec la liste des jets de capacités.</p>
+    <code>!cosh gmsheet</code>
+    <p>Affiche un "stat-block" synthétique des attributs du personnage.</p>
+    <code>!cosh token --set:+xxx,+yyyy,-zzzz</code>
+    <ul>
+      <li>Active les marqueurs de jeton préfixés par + </li>
+      <li>Désactive les marqueurs de jeton préfixés par - </li>
+    </ul>
+    <p>Chaque marqueur peut être suffixé par =n (où 1 &le; n &le; 9) pour ajouter un badge numérique au marqueur</p>
+    <code>!cosh stats</code>
+    <p>Affiche un tirage de caractéristiques dans le chat.</p>
+    `;
 
     /**
      * Return the chat string for a character's attribute
@@ -729,7 +765,7 @@ var COSH =
         // !cosh actions --caracs
         case "--caracs":
           const msgItems = [];
-          ROLLS.forEach((roll) => {
+          ROLLS[fiche].forEach((roll) => {
             const carac = roll.split("_")[1].toUpperCase();
             msgItems.push(`[${carac}](~${charId}|${roll}" ${buttonStyle("flat")})`);
           });
@@ -1311,23 +1347,50 @@ var COSH =
       sendChat(modName, chatMsg);
     }
 
-    function createMacro(playerId) {
+    /**
+     * Callback function for the cosh-create action text
+     * @returns {string} action : macro text
+     */
+    function coshCreateAction() {
+      let action = "!cosh create ?{Type ?|Personnage,pj|PNJ,pnj";
+      if (state[stateKey].universe === "COG") action+="|Vaisseau,vaisseau|Mécha,mecha}";
+      else action+="|Véhicule,vehicule}";
+      action += " ?{Nom ?}"
+      return action;
+    }
+
+    /**
+     * Create a macro
+     * @param {string} playerId played id
+     * @param {object} macro macro object representation
+     * @returns {void}
+     */
+    function createMacro(playerId, macro) {
       let [ createMacro ] = findObjs({
         _type:	"macro",
-        name: modCreateMacro
+        name: macro.name
       });
+
+      // get action
+      let action = "";
+      if (typeof macro.action === "function") {
+        action = macro.action();
+      } else {
+        action = macro.action;
+      }
+      if (!action) return;
+
+      // create or update
       if (createMacro === undefined) {
-        let action = "!cosh create ?{Type ?|Personnage,pj|PNJ,pnj";
-        if (state[stateKey].universe === "COG") action+="|Vaisseau,vaisseau|Mécha,mecha}";
-        else action+="|Véhicule,vehicule}";
-        action += " ?{Nom ?}"
         createMacro = createObj("macro", {
           playerid: playerId,
-          name: modCreateMacro,
+          name: macro.name,
           action: action,
           visibleto: "all",
           istokenaction: false
         });
+      } else {
+        createMacro.set("action", action);
       }
     }
 
@@ -1345,7 +1408,7 @@ var COSH =
       }
       helpMsg += `}} {{Msg privés=*${state[stateKey].whisper}* [Toggle](!cosh config --whisper)}}`;
       helpMsg += `{{Logging=*${state[stateKey].logging}* [Toggle](!cosh config --log)}}`;
-      helpMsg += `{{Macro=[Création](!cosh config --macro)}}`;
+      helpMsg += `{{Macros=[Création](!cosh config --macros)}}`;
       sendChat(modName, helpMsg);
     }
 
@@ -1366,8 +1429,8 @@ var COSH =
         case "--log":
           state[stateKey].logging = !state[stateKey].logging;
           break;
-        case "--macro":
-          createMacro(playerId);
+        case "--macros":
+          MACROS.forEach(macro => createMacro(playerId, macro));
           break;
         default:
           break;
@@ -1525,31 +1588,7 @@ var COSH =
       helpHandout.get("gmnotes", function (gmNotes) {
         if (gmNotes === modVersion) return;
 
-        helpHandout.set("notes", `
-        <h1>COSheet MOD script v${modVersion}</h1>
-        <p>par stephaned68</p>
-        <hr>
-        <h2>Commandes</h2>
-        <p>Ces commandes nécessitent qu'un jeton représentant un personnage soit sélectionné.</p>
-        <code>!cosh actions --attaques</code>
-        <p>Affiche un menu de chat avec la liste des attaques/armes.</p>
-        <code>!cosh actions --voies</code>
-        <p>Affiche un menu de chat avec la liste des voies.</p>
-        <code>!cosh actions --voie #</code>
-        <p>Affiche un menu de chat avec la liste des capacités de la voie no #.</p>
-        <code>!cosh actions --competences</code>
-        <p>Affiche un menu de chat avec la liste des jets de capacités.</p>
-        <code>!cosh gmsheet</code>
-        <p>Affiche un "stat-block" synthétique des attributs du personnage.</p>
-        <code>!cosh token --set:+xxx,+yyyy,-zzzz</code>
-        <ul>
-          <li>Active les marqueurs de jeton préfixés par + </li>
-          <li>Désactive les marqueurs de jeton préfixés par - </li>
-        </ul>
-        <p>Chaque marqueur peut être suffixé par =n (où 1 &le; n &le; 9) pour ajouter un badge numérique au marqueur</p>
-        <code>!cosh stats</code>
-        <p>Affiche un tirage de caractéristiques dans le chat.</p>
-        `);
+        helpHandout.set("notes", HELP_CONTENT);
         helpHandout.set("gmnotes", modVersion);
       });
     }
