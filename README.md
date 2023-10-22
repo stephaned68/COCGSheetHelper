@@ -17,7 +17,7 @@ Au premier lancement d'une partie après installation du script, ce dernier cré
   - <kbd>cosh-attaques</kbd>    macro d'affichage des attaques
   - <kbd>cosh-caracs</kbd>      macro d'affichage des jets de caractéristiques
   - <kbd>cosh-create</kbd>      macro d'appel de la création du fiche
-- Ajout support des jets de caractéristiques pour les fiches de PNJ
+- Ajout support des jets de caractéristiques pour les fiches de PNJ (*nécessite la version __3.16.1__ de la fiche de personnage COC*)
 
 ## 2023-09-10 - Version 1.20
 
