@@ -7,7 +7,19 @@ Script MOD compagnon pour les fiches de personnage Roll20 COC & COG
 Au premier lancement d'une partie après installation du script, ce dernier crée une aide de jeu (handout) résumant les commandes disponibles. Celles-ci sont également détaillées ci-dessous.
 
 
-### Current version : 1.30
+### Current version : 1.40
+
+## 2024-02-11 - Version 1.40
+- Nouveau menu des capacités d'une voie
+  Pour chaque rang
+  - Un bouton avec texte de la voie
+  - Un bouton pour lancer le jet de capacité associé
+- Toolkit du MJ avec une nouvelle famille de commandes 'gm:xxx'
+  - Renommage de la commande <kbd>create</kbd> en <kbd>gm:create</kbd>
+  - Modification de la commande <kbd>gm:create</kbd> pour associer le token sélectionné à la fiche créée
+  - Renommage de la commande <kbd>gmsheet</kbd> en <kbd>gm:sheet</kbd>
+  - Nouvelle commande <kbd>gm:bars</kbd> pour lier les barres de token aux attributs d'une fiche
+  - Nouvelle commande <kbd>gm:layer</kbd> pour basculer le ou les token(s) sélectionné(s) entre les couches 'jetons' et 'GM'
 
 ## 2023-10-22 - Version 1.30
 
@@ -78,7 +90,21 @@ Affiche un menu de chat pour configurer le script MOD
 
 ---
 
-    !cosh create {type} {nom}
+    !cosh debug
+
+Envoie des données de debogage à la console API
+
+---
+
+    !cosh gm:bars [--mook]
+
+Lie les barres du token sélectionné avec les attributs de la fiche liée
+- Le token doit être lié à une fiche ("représente")
+- Si l'option --mook est indiquée, la barre correspondant aux PV est chargée avec les valeurs courantes et max mais pas avec l'attribut
+
+---
+
+    !cosh gm:create {type} {nom}
 
 Crée une fiche de personnage du type indiqué, avec le nom indiqué, visible et controlable par tous les joueurs
 - Types communs : <kbd>pj</kbd>, <kbd>pnj</kbd>
@@ -87,13 +113,7 @@ Crée une fiche de personnage du type indiqué, avec le nom indiqué, visible et
 
 ---
 
-    !cosh debug
-
-Envoie des données de debogage à la console API
-
----
-
-    !cosh gmsheet
+    !cosh gm:sheet
 
 Murmure au MJ un "stat-block" de la fiche de personnage
 

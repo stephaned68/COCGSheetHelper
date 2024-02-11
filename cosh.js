@@ -1,7 +1,7 @@
 /**
  * COSheetHelper : COC & COG sheets helper functions
- * Version : 1.3.0
- * Last updated : 2023-10-22
+ * Version : 1.4.0
+ * Last updated : 2023-12-27
  * Usage :
  * !cosh <function> <arguments>
  * See documentation @ https://github.com/stephaned68/COCGSheetHelper#readme
@@ -21,13 +21,12 @@
  * @property {string}   _defaulttoken         A JSON string that contains the data for the Character's default token if one is set. Read-only.
  */
 
-
 var COSH =
   COSH ||
   (function () {
     const stateKey = "COSH";
     const modName = `Mod:${stateKey}`;
-    const modVersion = "1.30";
+    const modVersion = "1.40";
     const modCmd = "!cosh";
     const modHelpHandout = "Mod-COSheet-Help";
 
@@ -39,6 +38,7 @@ var COSH =
       hasCOGCrew: false,
       hasChatSetAttr: false,
       hasTokenMod: false,
+      tokenBars: { }
     };
 
     /**
@@ -133,7 +133,7 @@ var COSH =
      * @param {string} msg
      * @param {boolean} force
      */
-    function sendLog(msg, force = true) {
+    function writeLog(msg, force = true) {
       if (state[stateKey].logging || force) {
         if (typeof msg != "object") {
           log(`${modName} | ${msg}`);
@@ -146,12 +146,30 @@ var COSH =
     }
 
     /**
+     * Send a message to chat
+     * @param {string} message 
+     * @param {string} speakAs 
+     */
+    function writeChat(message, speakAs = modName) {
+      sendChat(speakAs, message, null, { noarchive: true });
+    }
+
+    /**
      * Return a date-time ISO string
      * @returns string
      */
     function dateTimeStamp() {
       const dt = new Date(Date.now()).toISOString();
       return dt.split("T")[0] + " @ " + dt.split("T")[1].split(".")[0];
+    }
+
+    /**
+     * Check if universe matches settings
+     * @param {string} setting 
+     * @returns {boolean}
+     */
+    function universe(setting) {
+      return (state[stateKey].universe === setting);
     }
 
     const ABILITIES = {
@@ -165,6 +183,20 @@ var COSH =
         pnj: [ "pnj_for::FOR", "pnj_dex::DEX", "pnj_con::CON", "pnj_int::INT", "pnj_per::PER", "pnj_cha::CHA" ],
         vaisseau: [ "FOR_TEST::PUI", "DEX_TEST::MAN", "CON_TEST::COQ", "INT_TEST::ORD", "PER_TEST::SEN", "CHA_TEST::COM" ],
         mecha: [ "mec_for::FOR", "mec_dex::DEX", "mec_con::CON", "mec_int::INT", "mec_per::PER", "mec_cha::CHA" ]
+      }
+    }
+
+    const TOKENBARS = {
+      COC: {
+        pj: [ "", "DEF", "PV:max" ],
+        pnj: [ "", "pnj_def", "pnj_pv:max" ],
+        vehicule: [ "", "DEFV", "PVV:max" ],
+      },
+      COG: {
+        pj: [ "DEP", "DEF", "PV:max" ],
+        pnj: [ "", "pnj_def", "pnj_pv:max" ],
+        vaisseau: [ "DEFSOL", "DEFRAP", "PV:max" ],
+        mecha: [ "mec_defsol", "mec_defrap", "mec_pv:max" ]
       }
     }
 
@@ -195,7 +227,13 @@ var COSH =
     <p>Affiche un menu de chat avec la liste des capacités de la voie no #.</p>
     <code>!cosh actions --competences</code>
     <p>Affiche un menu de chat avec la liste des jets de capacités.</p>
-    <code>!cosh gmsheet</code>
+    <code>!cosh gm:bars --mook</code>
+    <p>Lie les barres du token sélectionné aux attributs de la fiche de personnage<br>
+    Si l'option <code>--mook</code> est indiquée, les valeurs courante et maximum de PV sont liées, mais pas l'attribut
+    </p>
+    <code>!cosh gm:create pj|pnj|vehicule|vaisseau|mecha nomDuPersonnage</code>
+    <p>Crée une fiche de personnage du type indiqué et le lie au token sélectionné</p>
+    <code>!cosh gm:sheet</code>
     <p>Affiche un "stat-block" synthétique des attributs du personnage.</p>
     <code>!cosh token --set:+xxx,+yyyy,-zzzz</code>
     <ul>
@@ -205,6 +243,26 @@ var COSH =
     <p>Chaque marqueur peut être suffixé par =n (où 1 &le; n &le; 9) pour ajouter un badge numérique au marqueur</p>
     <code>!cosh stats</code>
     <p>Affiche un tirage de caractéristiques dans le chat.</p>
+    <hr>
+    <h2>Création rapide de tokens / mooks</h2>
+    <p>Le toolkit du MJ vous permet de créer rapidement et facilement des fiches de personnage et les associer aux tokens</p>
+    <ul>
+    <li>Fabriquez le token avec votre outil préféré et déposez le sur la page Roll20</li>
+    <li>Sélectionnez le token et tapez la commande <code>!cosh gm:create</code> suivi du type de fiche (<code>pj</code>, <code>pnj</code>, etc...) et du nom du personnage<br>
+    La fiche est créée et elle est liée au token via le champ "Représente"
+    </li>
+    <li>Mettez à jour la fiche à votre guise : manuellement, via un import de statblock depuis le PDF du jeu, ou via un blob JSON récupéré sur <a href="https://comob-data.rpgapps.net/">Chroniques Mobiles</a></li>
+    <li>Sélectionner le token et tapez la commande <code>!cosh gm:bars</code><br>
+    Les barres du token sont liés aux attributs de la fiche de personnage :
+    <ul>
+    <li>La barre 1 (verte) dépend du type de fiche</li>
+    <li>La barre 2 (bleue) est liée à la DEF</li>
+    <li>La barre 3 (rouge) est liée aux PV max</li>
+    </ul>
+    Si la fiche est un PNJ ou que vous indiquez l'option <code>--mook</code>, les valeurs de PV sont liées mais pas l'attribut.<br>
+    L'attribut qui représente les PV est détecté par la présence de ':max' dans son nom.
+    </li>
+    </ul>
     `;
 
     /**
@@ -225,20 +283,33 @@ var COSH =
      * @returns {string} repeating attribute
      */
     function repeatAttr(section, index, attr) {
-      if (isNaN(index)) return `repeating_${section}_${index}_${attr}`;
-      else return `repeating_${section}_$${index}_${attr}`;
+      if (!attr) return "";
+      const repeatSection = `repeating_${section}`;
+      if (isNaN(index)) return `${repeatSection}_${index}_${attr}`;
+      else return `${repeatSection}_$${index}_${attr}`;
     }
 
     /**
-     * Return the chat string for character's repeating attribute
-     * @param {string} char
-     * @param {string} section
-     * @param {number|string} index
-     * @param {string} attr
-     * @returns {string} chat string
+     * @typedef RepeatValueOptions
+     * @property {string} charId
+     * @property {string} section
+     * @property {string|number} index
+     * @property {string} attr
      */
-    function charRepeatAttr(char, section, index, attr) {
-      return charAttr(char, repeatAttr(section, index, attr));
+
+    /**
+     * Return a repeating section attribute value
+     * @param {RepeatValueOptions} options 
+     * @returns {string}
+     */
+    function repeatValue(options) {
+      let value = "";
+      const { charId, section, index, attr } = options;
+      const repeatName = repeatAttr(section, index, attr);
+      if (repeatName) {
+        value = getAttrByName(charId, repeatName);
+      }
+      return value;
     }
 
     /**
@@ -261,158 +332,6 @@ var COSH =
         }
       }
       return rowIds;
-    }
-
-    /**
-     * Return the ordered list of ids for a section
-     * @param {string} sectionName : section name
-     * @param {function} callback : callback function to process the ids
-     */
-    function getSectionIDsOrdered(sectionName, callback) {
-      "use strict";
-      getAttrs([`_reporder_${sectionName}`], function (v) {
-        getSectionIDs(sectionName, function (idArray) {
-          let reporderArray = v[`_reporder_${sectionName}`]
-              ? v[`_reporder_${sectionName}`].toLowerCase().split(",")
-              : [],
-            ids = [
-              ...new Set(
-                reporderArray.filter((x) => idArray.includes(x)).concat(idArray)
-              ),
-            ];
-          callback(ids);
-        });
-      });
-    }
-
-    /**
-     * Return an handout object
-     * @param {string} name : handout name
-     * @returns {object} handout object
-     */
-    function findHandout(name) {
-      const [ handoutObj ] = findObjs(
-        {
-          _type: "handout",
-          _name: name,
-        },
-        {
-          caseInsensitive: true,
-        }
-      );
-      return handoutObj;
-    }
-
-    /**
-     * Return an handout hyperlink
-     * @param {string} name
-     * @param {string} sequence
-     * @param {object} handoutObj
-     * @returns {string} handout url
-     */
-    function handoutLink(name, sequence, handoutObj) {
-      let link = "";
-      if (!handoutObj) handoutObj = findHandout(name);
-      if (handoutObj) {
-        if (sequence > 0) link = sequence.toString() + ". ";
-        link = `[${link}${name}](http://journal.roll20.net/handout/${handoutObj.id})`;
-      }
-      return link;
-    }
-
-    /**
-     * Return an ability object
-     * @param {string} charId
-     * @param {string} abilityName
-     * @returns {object} ability object
-     */
-    function findAbility(charId, abilityName) {
-      const [ abilityObj ] = findObjs(
-        {
-          _type: "ability",
-          _characterid: charId,
-          name: abilityName,
-        },
-        {
-          caseInsensitive: true,
-        }
-      );
-      return abilityObj;
-    }
-
-    /**
-     * Return an object with 2 properties :
-     * - {string} roll:   the fully qualified name of a roll for an ability identifier (VxRy)
-     * - {string} button: the text to display on the roll button
-     * @param {string} charId
-     * @param {string} abilityId
-     * @returns {object} abilityRollObj
-     */
-    function findAbilityRoll(charId, abilityId) {
-      const rowIds = repeatRowIds(charId, "jetcapas");
-      let abilityRollObj = {
-        roll: abilityId.toLowerCase(),
-        button: "💬",
-      };
-      for (const rowId of rowIds) {
-        const roll = findObjs({
-          _type: "attribute",
-          _characterid: charId,
-          name: `repeating_jetcapas_${rowId}_jetcapavr`,
-        });
-        if (roll.length === 1) {
-          if (roll[0].get("current") === abilityId.toLowerCase()) {
-            abilityRollObj = {
-              roll: `repeating_jetcapas_${rowId}_pjcapa`,
-              button: "🎲",
-            };
-            break;
-          }
-        }
-      }
-      return abilityRollObj;
-    }
-
-    /**
-     * Return the text for an ability chat button
-     * @param {object} params
-     * @param {string} params.charId
-     * @param {string} params.name
-     * @param {string} params.ability
-     * @param {number} params.sequence
-     * @param {object} params.handoutObj
-     * @param {object} params.abilityObj
-     * @returns {string} text for ability chat button
-     */
-    function abilityButton(params) {
-      let button = "";
-      let buttonRoll = "";
-      let abilityRoll = {};
-      let handoutObj = params.handoutObj;
-      if (!handoutObj) handoutObj = findHandout(params.name);
-      let abilityObj = params.abilityObj;
-      if (!abilityObj) abilityObj = findAbility(params.charId, params.ability);
-      if (abilityObj) {
-        if (abilityObj.get("action") != "") {
-          buttonRoll = params.ability;
-        }
-      } else {
-        abilityRoll = findAbilityRoll(params.charId, params.ability);
-        if (abilityRoll) {
-          buttonRoll = abilityRoll.roll;
-        }
-      }
-      if (buttonRoll !== "") {
-        button += "[";
-        if (handoutObj) {
-          button += abilityRoll.button === undefined ? "🎲" : abilityRoll.button;
-        } else {
-          if (params.sequence > 0) button += params.sequence.toString() + ". ";
-          button += params.name;
-        }
-        button += `](~${params.charId}|${buttonRoll}" ${buttonStyle("flat")})`;
-      }
-      return button;
     }
 
     /**
@@ -486,23 +405,6 @@ var COSH =
     }
 
     /**
-     * Return selected tokens as an array of character objects
-     * @param {object} msg Chat message object
-     * @returns {object[]} character objects for selected tokens
-     */
-    function getCharactersFromTokens(msg) {
-      let characters = [];
-      const tokens = getTokens(msg);
-      tokens.forEach((token) => {
-        const character = getCharacterFromToken(token);
-        if (character) {
-          characters.push(character);
-        }
-      });
-      return characters;
-    }
-
-    /**
      * Output the whisper command
      * (based on sheet and general configuration)
      * @param {string} toGM
@@ -517,394 +419,433 @@ var COSH =
       return w;
     }
 
+    const ATTRIBUTE_NAMES = {
+      COC: {
+        pj: {
+          togm: "togm",
+          atkRpt: "armes",
+          atkName: "armenom",
+          atkRoll: "pjatk",
+          atkType: "armeatk",
+          atkPortee: "armeportee",
+          capaRpt: "jetcapas",
+          capaName: "jetcapanom",
+          capaSkill: "jetcapatitre",
+          capaRoll: "pjcapa",
+          traitRpt: "traits",
+          traitName: "traitnom",
+          traitRoll: "pjtrait",
+        },
+        pnj: {
+          togm: "pnj_togm",
+          atkRpt: "pnjatk",
+          atkName: "atknom",
+          atkRoll: "pnjatk",
+          capaRpt: "pnjcapas",
+          capaName: "capanom",
+          capaRoll: "pnjcapa",
+        },
+        vehicule: {
+          togm: "togm",
+          capaRpt: "jetv",
+          capaName: "jetvnom",
+          capaRoll: "vehicule",
+        },
+      },
+      COG: {
+        pj: {
+          togm: "togm",
+          atkRpt: "armes",
+          atkName: "armenom",
+          atkRoll: "pjatk",
+          atkType: "armeatk",
+          atkPortee: "armeportee",
+          capaRpt: "jetcapas",
+          capaName: "jetcapanom",
+          capaSkill: "jetcapatitre",
+          capaRoll: "pjcapa",
+          traitRpt: "traits",
+          traitName: "traitnom",
+          traitRoll: "pjtrait",
+        },
+        pnj: {
+          togm: "pnj_togm",
+          atkRpt: "pnjatk",
+          atkName: "atknom",
+          atkRoll: "pnjatk",
+          atkPortee: "atkportee",
+          capaRpt: "pnjcapas",
+          capaName: "capanom",
+          capaRoll: "pnjcapa",
+        },
+        vaisseau: {
+          togm: "togm",
+          atkRpt: "armesv",
+          atkName: "armenom",
+          atkRoll: "vatk",
+          atkType: "armeatk",
+        },
+        mecha: {
+          togm: "mec_togm",
+          atkRpt: "mecatk",
+          atkName: "atknom",
+          atkRoll: "mecatk",
+          atkType: "atktype",
+          atkPortee: "atkportee",
+        }
+      },
+    };
+
+    
+    /**
+     * @typedef {Object} AllPathsOptions
+     * @property {string} charId
+     * @property {string} charName
+     * @property {string} attrs
+     */
+
+    /**
+     * Return a chat menu for all paths
+     * @param {AllPathsOptions} options 
+     * @returns {string} 
+     */
+    function getAllPaths(options) {
+      let allPathsMenu = "";
+      const { charId, charName, attrs } = options;
+
+      const voies = [...Array(9).keys()].map(v => `voie${v+1}nom`);
+      voies.forEach((voieAttr, voie) => {
+        const voieNom = getAttrByName(charId, voieAttr);
+        if (voieNom !== "") {
+          allPathsMenu += `${voie + 1}. [${voieNom}](!cosh actions --voie ${
+            voie + 1
+          } --charId=${charId}" ${buttonStyle("flat")})\n\r`;
+        }
+      });
+
+      if (allPathsMenu !== "") {
+        allPathsMenu =
+          whisper(attrs.togm, charName) +
+          `&{template:co1} {{perso=${charAttr(
+            charName,
+            "character_name"
+          )}}} {{subtags=${charAttr(
+            charName,
+            "PROFIL"
+          )}}} {{name=Capacités}} {{desc=${allPathsMenu} }}`;
+      }
+
+      return allPathsMenu;
+    }
+
+    /**
+     * @typedef {Object} OnePathOptions
+     * @property {string} charId
+     * @property {string} charName
+     * @property {string} pathId
+     * @property {string} attrs
+     */
+
+    /**
+     * Return a chat menu for all possessed abilties in a path
+     * @param {OnePathOptions} options 
+     * @returns {string}
+     */
+
+    function getOnePath(options) {
+      let onePathMenu = "";
+      const { charId, charName, pathId, attrs } = options;
+
+      const voie = `voie${pathId}-`;
+      const rangs = [...Array(5).keys()].map(r => `${voie}${r+1}`);
+      rangs.forEach((rangAttr, rang) => {
+        const vnrn = rangAttr.replace("voie", "v").replace("-", "r");
+        // check if character has ability
+        const hasAbility = getAttrByName(
+          charId,
+          vnrn
+        ) || "0";
+        if (hasAbility !== "1") return;
+        // get ability title
+        let rangTitle = getAttrByName(
+          charId,
+          rangAttr.replace("-", "-t")
+        ) || "";
+        let rangDesc = getAttrByName(charId, rangAttr);
+        // parse from description if no title found
+        if (rangTitle === "" && rangDesc.indexOf("\n") !== -1) {
+          [ rangTitle ] = rangDesc.split("\n");
+          rangDesc = rangDesc.split("\n").slice(1).join("\n");
+        }
+        const buttonDesc = `[${rangTitle}](~${charId}|${vnrn}" ${buttonStyle("flat")})`;
+        let buttonAbility = "";
+        const abilityRollId = repeatRowIds(charId, "jetcapas").find((id) => {
+          return getAttrByName(charId, `repeating_jetcapas_${id}_jetcapavr`) === vnrn; 
+        })
+        if (abilityRollId) {
+          buttonAbility = ` [🎲](~${charId}|repeating_jetcapas_${abilityRollId}_pjcapa" ${buttonStyle("flat")})`;
+        }
+        onePathMenu += `${rang+1}. ${buttonDesc} ${buttonAbility}\n\r`;
+      });
+
+      if (onePathMenu !== "") {
+        onePathMenu =
+          whisper(attrs.togm, charName) +
+          `&{template:co1} {{perso=${charName}}} {{subtags=Capacités}} {{name=${charAttr(
+            charName,
+            `voie${pathId}nom`
+          )}}} {{desc=${onePathMenu} }}`;
+      }
+
+      return onePathMenu;
+    }
+
+
+    /**
+     * @typedef {Object} AllAbilityRollsOptions
+     * @property {string} charId
+     * @property {string} charName
+     * @property {string} attrs
+     */
+
+    /**
+     * Return a chat menu for all ability rolls
+     * @param {AllAbilityRollsOptions} options 
+     * @returns {string} Chat menu string 
+     */
+    function getAllAbilityRolls(options) {
+      let allAbilityMenu = "";
+      const { charId, charName, attrs } = options;
+      
+      rowIds = repeatRowIds(charId, attrs.capaRpt);
+      if (rowIds.length > 0) {
+        rowIds.forEach((rowId) => {
+          let buttonLabel = repeatValue({ 
+            charId, 
+            section: attrs.capaRpt, 
+            index: rowId, 
+            attr: attrs.capaSkill
+          });
+          if (buttonLabel === "") {
+            buttonLabel = repeatValue({
+              charId,
+              section: attrs.capaRpt, 
+              index: rowId, 
+              attr: attrs.capaName
+            });
+          }
+          if (buttonLabel) {
+            allAbilityMenu +=
+              `[${buttonLabel}](~${charId}|${repeatAttr(
+                attrs.capaRpt,
+                rowId,
+                attrs.capaRoll
+              )}" ${buttonStyle("flat")})` +
+              "\n\r";
+          }
+        });
+
+        if (allAbilityMenu !== "") {
+          allAbilityMenu =
+            whisper(attrs.togm, charName) +
+            `&{template:co1} {{perso=${charName}}} {{subtags=${charAttr(
+              charName,
+              "PROFIL"
+            )}}} {{name=Compétences}} {{desc=${allAbilityMenu} }}`;
+        }
+      }
+
+      return allAbilityMenu;
+    }
+
+    /**
+     * @typedef {Object} AllAttackRolls
+     * @property {string} charId
+     * @property {string} charName
+     * @property {string} attrs
+     * @property {string} fiche 
+     */
+
+    /**
+     * Return a chat menu for all attack rolls
+     * @param {AllAttackRolls} options 
+     * @returns 
+     */
+    function getAllAttackRolls(options) {
+      let allAttackRolls = "";
+      const { charId, charName, attrs, fiche } = options;
+
+      rowIds = repeatRowIds(charId, attrs.atkRpt);
+      if (rowIds.length > 0) {
+        for (let arme = 0; arme < rowIds.length; arme++) {
+          const armeNom = repeatValue({
+            charId,
+            section: attrs.atkRpt, 
+            index: rowIds[arme], 
+            attr: attrs.atkName
+          });
+          let atkNom = "";
+          if (fiche === "pj" || fiche === "vaisseau") {
+            atkNom = repeatValue({
+              charId,
+              section: attrs.atkRpt, 
+              index: rowIds[arme], 
+              attr: "armejetn"
+            });
+          }
+          let atkInfo = "";
+          atkInfo += atkNom !== "" ? " " + atkNom : "";
+          let atkType = "";
+          if (attrs.atkType) {
+            atkType = repeatValue({
+              charId,
+              section: attrs.atkRpt, 
+              index: rowIds[arme], 
+              attr: attrs.atkType
+            });
+          }
+          if (fiche !== "vaisseau") {                
+            let limitee = "";
+            if (fiche === "pj")
+              limitee = repeatValue({
+                charId,
+                section: attrs.atkRpt, 
+                index: rowIds[arme], 
+                attr: "armelim"
+              });
+            if (limitee !== "") atkInfo += " " + limitee;
+            let portee = "";
+            if (fiche !== "vaisseau")
+              portee = repeatValue({
+                charId,
+                section: attrs.atkRpt, 
+                index: rowIds[arme], 
+                attr: attrs.atkPortee
+              });
+            if (portee !== "") {
+              if (atkType === "@{ATKTIR}") atkInfo += " (Tir:";
+              if (atkType === "@{ATKMAG}") atkInfo += " (Mag:";
+              if (atkType === "@{ATKMEN}") atkInfo += " (Men:";
+              if (
+                atkType === "@{ATKPSYINFLU}" ||
+                atkType === "@{ATKPSYINTUI}"
+              )
+                atkInfo += " (Psy:";
+              if (fiche !== "pj") atkInfo += "(P:";
+              atkInfo += portee + ")";
+            } else {
+              if (fiche !== "pnj") {
+                if (atkType === "@{ATKMAG}") {
+                  atkInfo += " (Mag)";
+                } else if (atkType === "@{ATKMEN}") {
+                  atkInfo += " (Men)";
+                } else if (
+                  atkType === "@{ATKPSYINFLU}" ||
+                  atkType === "@{ATKPSYINTUI}"
+                ) {
+                  atkInfo += " (Psy)";
+                } else {
+                  atkInfo += " (CaC)";
+                }
+              }
+            }
+          }
+          if (armeNom !== "") {
+            allAttackRolls += `[${armeNom}](~${charId}|${repeatAttr(
+              attrs.atkRpt,
+              rowIds[arme],
+              attrs.atkRoll
+            )}" ${buttonStyle("flat")}) ${atkInfo}\n\r`;
+          }
+        }
+        if (allAttackRolls !== "") {
+          allAttackRolls =
+            whisper(attrs.togm, charName) +
+            `&{template:co1} {{perso=${charName}}} {{subtags=Combat}} {{name=Attaques}} {{desc=${allAttackRolls} }}`;
+        }
+      }
+
+      return allAttackRolls;
+    }
+
+    /**
+     * @typedef {Object} CaracRolls
+     * @property {string} charId
+     * @property {string} charName
+     * @property {string} attrs
+     * @property {string} fiche 
+     */
+
+    /**
+     * Return a chat menu for carac rolls
+     * @param {CaracRolls} options 
+     * @returns {string}
+     */
+    function getCaracRolls(options) {
+      let caracRolls = "";
+      const { charId, charName, attrs, fiche } = options;
+
+      const msgItems = [];
+      ROLLS[fiche].forEach((roll) => {
+        const carac = roll.split("_")[1].toUpperCase();
+        msgItems.push(`[${carac}](~${charId}|${roll}" ${buttonStyle("flat")})`);
+      });
+      caracRolls = msgItems.join(" | ");
+      caracRolls =
+        whisper(attrs.togm, charName) +
+        `&{template:co1} @{${charName}|token_dsp} {{perso=${charName}}} {{subtags=Tests}} {{name=Caractéristiques}} {{desc=${caracRolls} }}`;
+
+      return caracRolls;
+    }
+
     /**
      * Output a list of actions to the chat
      * @param {string} charId Character Id
-     * @param {string} args Chat command arguments
+     * @param {string[]} args Chat command arguments
      */
     function displayActions(charId, args) {
-      const charName = getAttrByName(charId, "character_name");
+      const charName  = getAttrByName(charId, "character_name");
+      const fiche     = getAttrByName(charId, "type_personnage");
+      const attrs     = ATTRIBUTE_NAMES[state[stateKey].universe][fiche];
+      const [ menuType, pathId ] = args;
+
       let chatMsg = "";
-      let optDesc = ""; // descriptions only
-      const fiche = getAttrByName(charId, "type_personnage");
-      for (const arg of args) {
-        if (arg == "--desc") optDesc = " --desc";
-      }
 
-      const attrNames = {
-        COC: {
-          pj: {
-            togm: "togm",
-            atkRpt: "armes",
-            atkName: "armenom",
-            atkRoll: "pjatk",
-            capaRpt: "jetcapas",
-            capaName: "jetcapanom",
-            capaSkill: "jetcapatitre",
-            capaRoll: "pjcapa",
-            traitRpt: "traits",
-            traitName: "traitnom",
-            traitRoll: "pjtrait",
-          },
-          pnj: {
-            togm: "pnj_togm",
-            atkRpt: "pnjatk",
-            atkName: "atknom",
-            atkRoll: "pnjatk",
-            capaRpt: "pnjcapas",
-            capaName: "capanom",
-            capaRoll: "pnjcapa",
-          },
-          vehicule: {
-            togm: "togm",
-            capaRpt: "jetv",
-            capaName: "jetvnom",
-            capaRoll: "vehicule",
-          },
-        },
-        COG: {
-          pj: {
-            togm: "togm",
-            atkRpt: "armes",
-            atkName: "armenom",
-            atkRoll: "pjatk",
-            capaRpt: "jetcapas",
-            capaName: "jetcapanom",
-            capaRoll: "pjcapa",
-            traitRpt: "traits",
-            traitName: "traitnom",
-            traitRoll: "pjtrait",
-          },
-          pnj: {
-            togm: "pnj_togm",
-            atkRpt: "pnjatk",
-            atkName: "atknom",
-            atkRoll: "pnjatk",
-            capaRpt: "pnjcapas",
-            capaName: "capanom",
-            capaRoll: "pnjcapa",
-          },
-          vaisseau: {
-            togm: "togm",
-            atkRpt: "armesv",
-            atkName: "armenom",
-            atkRoll: "vatk",
-          },
-        },
-      };
-
-      const attrs = attrNames[state[stateKey].universe][fiche];
-      const toGM = getAttrByName(charId, attrNames[state[stateKey].universe][fiche].togm);
-
-      let rowIds = [];
-      switch (args[0]) {
+      switch (menuType) {
         // !cosh actions --voies : liste des voies
         case "--voies":
-          const voies = [
-            "voie1nom",
-            "voie2nom",
-            "voie3nom",
-            "voie4nom",
-            "voie5nom",
-            "voie6nom",
-            "voie7nom",
-            "voie8nom",
-            "voie9nom",
-          ];
-          voies.forEach((voieAttr, voie) => {
-            const voieNom = getAttrByName(charId, voieAttr);
-            if (voieNom != "") {
-              chatMsg += `[${voie + 1}. ${voieNom}](!cosh actions --voie ${
-                voie + 1
-              }${optDesc} --charId=${charId}" ${buttonStyle("flat")})\n\r`;
-            }
-          });
-          if (chatMsg != "") {
-            chatMsg =
-              whisper(toGM, charName) +
-              `&{template:co1} {{perso=${charAttr(
-                charName,
-                "character_name"
-              )}}} {{subtags=${charAttr(
-                charName,
-                "PROFIL"
-              )}}} {{name=Capacités}} {{desc=${chatMsg} }}`;
-          }
+          if (fiche === "pj") chatMsg = getAllPaths({ charId, charName, attrs });
           break;
 
         // !cosh actions --voie # : liste des capacités voie #
         case "--voie":
-          const pathId = args[1];
-          const voie = `voie${pathId}-`;
-          const rangs = [
-            voie + "1",
-            voie + "2",
-            voie + "3",
-            voie + "4",
-            voie + "5",
-          ];
-          rangs.forEach((rangAttr, rang) => {
-            const vnRnId = rangAttr.replace("voie", "v").replace("-", "r");
-            // check if character has ability
-            const hasAbility = getAttrByName(
-              charId,
-              vnRnId
-            );
-            if (hasAbility !== "1") return;
-            // get ability title
-            const vnRnTtl = rangAttr.replace("-", "-t");
-            const rangTitle = getAttrByName(
-              charId,
-              vnRnTtl
-            );
-            let rangInfo = "";
-            // parse from description if no title found
-            if (rangTitle !== "") {
-              rangInfo = rangTitle;
-            } else {
-              rangInfo = getAttrByName(charId, rangAttr);
-              if (rangInfo.indexOf("\n") !== -1)
-                rangInfo = rangInfo.split("\n")[0];
-            }
-            // can have multiple ';' separated abilities
-            const rangData = rangInfo.split(";");
-            let chatRang = "";
-            rangData.forEach((rangNom, item) => {
-              if (chatRang != "" && item > 0) chatRang += ", ";
-              rangNom = rangNom.trim();
-              let rangLabel = rangNom;
-              // can have <ability name> | <display label>
-              if (rangNom.indexOf("|") != -1) {
-                const rangExtras = rangNom.split("|");
-                rangNom = rangExtras[0].trim();
-                rangLabel = rangExtras[1].trim();
-              }
-              const abilityName = `V${pathId}R${ (rang + 1).toString() }`;
-              if (rangNom != "") {
-                const handoutObj = findHandout(rangNom);
-                if (handoutObj) {
-                  chatRang +=
-                    handoutLink(
-                      rangLabel,
-                      item > 0 ? 0 : rang + 1,
-                      handoutObj
-                    ) + " ";
-                }
-                if (optDesc != " --desc") {
-                  const abilityObj = findAbility(charId, abilityName);
-                  if (abilityObj) {
-                    chatRang += abilityButton({
-                      charId,
-                      name: rangLabel,
-                      ability: abilityName,
-                      sequence: rang + 1,
-                      handoutObj,
-                      abilityObj,
-                    });
-                  } else {
-                    chatRang += abilityButton({
-                      charId,
-                      name: rangLabel,
-                      ability: abilityName,
-                      sequence: rang + 1,
-                      handoutObj,
-                      abilityObj: null,
-                    });
-                  }
-                }
-              }
-            });
-            if (chatRang != "") chatMsg += chatRang + "\n\r";
-          });
-          if (chatMsg != "") {
-            chatMsg =
-              whisper(toGM, charName) +
-              `&{template:co1} {{perso=${charName}}} {{subtags=Capacités}} {{name=${charAttr(
-                charName,
-                `voie${pathId}nom`
-              )}}} {{desc=${chatMsg} }}`;
-          }
+          if (fiche === "pj") chatMsg = getOnePath({ charId, charName, pathId, attrs });
           break;
 
         // !cosh actions --competences
         case "--competences":
           if (attrs.capaRpt === "") break;
-          rowIds = repeatRowIds(charId, attrs.capaRpt);
-          if (rowIds.length > 0) {
-            rowIds.forEach((rowId) => {
-              const compNom = getAttrByName(
-                charId,
-                repeatAttr(attrs.capaRpt, rowId, attrs.capaName)
-              );
-              const compLabel = getAttrByName(
-                charId,
-                repeatAttr(attrs.capaRpt, rowId, attrs.capaSkill)
-              );
-              if (compNom != "") {
-                chatMsg +=
-                  `[${compNom}](~${charId}|${repeatAttr(
-                    attrs.capaRpt,
-                    rowId,
-                    attrs.capaRoll
-                  )})` +
-                  (compLabel && compLabel != null ? ` ${compLabel}` : "") +
-                  "\n\r";
-              }
-            });
-            if (chatMsg != "") {
-              chatMsg =
-                whisper(toGM, charName) +
-                `&{template:co1} {{perso=${charName}}} {{subtags=${charAttr(
-                  charName,
-                  "PROFIL"
-                )}}} {{name=Compétences}} {{desc=${chatMsg} }}`;
-            }
-          }
+          chatMsg = getAllAbilityRolls({ charId, charName, attrs });
           break;
 
         // !cosh actions --caracs
         case "--caracs":
-          const msgItems = [];
-          ROLLS[fiche].forEach((roll) => {
-            const carac = roll.split("_")[1].toUpperCase();
-            msgItems.push(`[${carac}](~${charId}|${roll}" ${buttonStyle("flat")})`);
-          });
-          chatMsg = msgItems.join(" | ");
-          chatMsg =
-            whisper(toGM, charName) +
-            `&{template:co1} @{${charName}|token_dsp} {{perso=${charName}}} {{subtags=Tests}} {{name=Caractéristiques}} {{desc=${chatMsg} }}`;
+          chatMsg = getCaracRolls({ charId, charName, attrs, fiche });
           break;
 
         // !cosh actions --attaques
         case "--attaques":
           if (attrs.atkRpt === "") break;
-          rowIds = repeatRowIds(charId, attrs.atkRpt);
-          if (rowIds.length > 0) {
-            for (let arme = 0; arme < rowIds.length; arme++) {
-              let armeNom = "";
-              armeNom = getAttrByName(
-                charId,
-                repeatAttr(attrs.atkRpt, rowIds[arme], attrs.atkName)
-              );
-              let atkNom = "";
-              if (fiche === "pj" || fiche === "vaisseau") {
-                atkNom = getAttrByName(
-                  charId,
-                  repeatAttr(attrs.atkRpt, rowIds[arme], "armejetn")
-                );
-              }
-              let atkInfo = "";
-              atkInfo += atkNom !== "" ? " " + atkNom : "";
-              const atkType = getAttrByName(
-                charId,
-                repeatAttr(attrs.atkRpt, rowIds[arme], "armeatk")
-              );
-              if (fiche !== "vaisseau") {                
-                let limitee = "";
-                if (fiche !== "pnj")
-                  limitee = getAttrByName(
-                    charId,
-                    repeatAttr(attrs.atkRpt, rowIds[arme], "armelim")
-                  );
-                if (limitee != "") atkInfo += " " + limitee;
-                let portee = "";
-                if (fiche !== "pnj")
-                  portee = getAttrByName(
-                    charId,
-                    repeatAttr(attrs.atkRpt, rowIds[arme], "armeportee")
-                  );
-                if (portee != "") {
-                  if (atkType == "@{ATKTIR}") atkInfo += " (D:";
-                  if (atkType == "@{ATKMAG}") atkInfo += " (Mag:";
-                  if (atkType == "@{ATKMEN}") atkInfo += " (Men:";
-                  if (
-                    atkType == "@{ATKPSYINFLU}" ||
-                    atkType == "@{ATKPSYINTUI}"
-                  )
-                    atkInfo += " (Psy:";
-                  atkInfo += portee + ")";
-                } else {
-                  if (fiche !== "pnj") {
-                    if (atkType == "@{ATKMAG}") {
-                      atkInfo += " (Mag)";
-                    } else if (atkType == "@{ATKMEN}") {
-                      atkInfo += " (Men)";
-                    } else if (
-                      atkType == "@{ATKPSYINFLU}" ||
-                      atkType == "@{ATKPSYINTUI}"
-                    ) {
-                      atkInfo += " (Psy)";
-                    } else {
-                      atkInfo += " (C)";
-                    }
-                  }
-                }
-              }
-              if (armeNom != "") {
-                chatMsg += `[${armeNom}](~${charId}|${repeatAttr(
-                  attrs.atkRpt,
-                  rowIds[arme],
-                  attrs.atkRoll
-                )}" ${buttonStyle("flat")}) ${atkInfo}\n\r`;
-              }
-            }
-            if (chatMsg != "") {
-              chatMsg =
-                whisper(toGM, charName) +
-                `&{template:co1} {{perso=${charName}}} {{subtags=Combat}} {{name=Attaques}} {{desc=${chatMsg} }}`;
-            }
-          }
-          break;
-
-        case "--atk":
-          if (attrs.atkRpt === "" || args.length < 2) break;
-          chatMsg =
-            whisper(toGM, charName) +
-            `%{${charName}|${repeatAttr(
-              attrs.atkRpt,
-              args[1],
-              attrs.atkRoll
-            )}}`;
+          chatMsg = getAllAttackRolls({ charId, charName, attrs, fiche });
           break;
 
         default:
           break;
       }
-      if (chatMsg != "") {
-        sendLog(chatMsg);
-        sendChat(`character|${charId}`, chatMsg);
+      if (chatMsg !== "") {
+        //writeLog(chatMsg);
+        writeChat(chatMsg, `character|${charId}`);
       }
-    }
-
-    /**
-     * Find an handout object or create it
-     * @param {object} props Properties of the object to find or create
-     * @param {string} unique Unique identifier for the handout
-     * @returns Handout object
-     */
-    function findOrNewHandout(props, unique) {
-      unique = unique || "";
-      const exist = findObjs({
-        _type: "handout",
-        name: props.name,
-      });
-      let handoutObj;
-      if (exist.length === 0) {
-        handoutObj = createObj("handout", props);
-      } else {
-        if (exist.length === 1 || unique === "") {
-          handoutObj = exist[0];
-        } else {
-          exist.forEach((handout) => {
-            handout.get("gmnotes", function (gmnotes) {
-              if (gmnotes === unique) {
-                handoutObj = handout;
-              }
-            });
-          });
-        }
-      }
-      return handoutObj;
     }
 
     /**
@@ -914,7 +855,7 @@ var COSH =
      */
     function findAttribute(props) {
       const criteria = { _type: "attribute" };
-      for (prop in props) {
+      for (const prop in props) {
         criteria[prop] = props[prop];
       }
       return findObjs(criteria);
@@ -942,21 +883,6 @@ var COSH =
       const attribute = findSingleAttribute({ _characterid: character.get("_id"), name: name });
       if (attribute) value = attribute.get(valueType);
       return value;
-    }
-
-    /**
-     * Find an attribute object or create it
-     * @param {object} props Properties of the attribute to find or create
-     */
-    function findOrNewAttribute(props) {
-      const exist = findAttribute(props);
-      let attributeObj;
-      if (exist.length === 0) {
-        attributeObj = createObj("attribute", props);
-      } else {
-        attributeObj = exist[0];
-      }
-      return attributeObj;
     }
 
     /**
@@ -1115,10 +1041,38 @@ var COSH =
       setMarkers(tokenObj, characterObj, markerOps);
     }
 
-    function createSheet(args) {
-      let [ charType, charName ] = args;
+    /**
+     * Link character sheet to token
+     * @param {Roll20Character} character 
+     * @param {object} token 
+     * @returns {void}
+     */
+    function gmLinkToken(character, token) {
+      character.set("avatar", token.get("imgsrc"));
+      if (!token.get("represents")) {
+        token.set("represents", character.get("id"));
+      }
+      if (!token.get("name")) {
+        token.set("name", character.get("name"));
+      }
+      setDefaultTokenForCharacter(character, token);
 
-      charType = charType || "pj";
+      writeChat("/w GM Token linked to " + character.get("name"));
+    }
+
+    /**
+     * Create a character sheet
+     * @param {string[]} args 
+     * @returns {object}
+     */
+    function gmCreateSheet(args) {
+      const charType = args.shift() || "pj";
+      if (state[stateKey].universe && !TOKENBARS[state[stateKey].universe][charType]) {
+        writeChat(`/w GM Unknown character type ${charType}`);
+        return;
+      }
+
+      const charName = args.join(" ");
       const charVisibility = charType === "pj" ? "all" : "";
       
       const character = createObj("character", {
@@ -1128,26 +1082,65 @@ var COSH =
         "controlledby": charVisibility
       });
       if (!character) {
-        clog("");
+        writeLog(`Unable to create ${chartype} sheet for ${charName}`);
         return;
       }
 
+      const _characterid = character.get("id");
+
+      [
+        { name: "type_personnage", value: charType },
+        { name: "type_fiche", value: charType },
+      ].forEach(item => {
+        createObj("attribute", {
+          _characterid,
+          name: item.name,
+          current: item.value
+        });
+      });
+
+      return character;
+
+    }
+
+    /**
+     * Link token bars to character
+     * @param {object} token 
+     * @param {object} character 
+     * @param {boolean} mook 
+     */
+    function gmLinkTokenBars(token, character, mook) {
       const charId = character.get("id");
-
-      let attrib = null;
-
-      attrib = createObj("attribute", {
-        _characterid: charId,
-        name: "type_personnage",
-        current: charType
+      const charType = getAttrByName(charId,"type_personnage");
+      mook = mook || (charType === "pnj");
+      const universe = state[stateKey].universe;
+      const tokenbars = TOKENBARS[universe][charType];
+      let linkMsg = [];
+      tokenbars.forEach((link, bar) => {
+        if (!link) return;
+        const barName = `bar${ bar + 1 }`;
+        const [ attribute, max ] = link.split(":");
+        if (max && mook) {
+          value = getAttrByName(charId, attribute, "current");
+          token.set(`${barName}_value`, value);
+          maxValue = getAttrByName(charId, attribute, "max");
+          token.set(`${barName}_max`, maxValue);
+          linkMsg.push(barName + ": " + value + "/" + maxValue);
+          return;
+        }
+        const [ linkedTo ] = findObjs({
+          _type: "attribute",
+          _characterid: charId,
+          name: attribute
+        });
+        if (!linkedTo) return;
+        linkMsg.push(barName + ": " + attribute);
+        token.set(`${barName}_link`, linkedTo.get("id"));
       });
 
-      attrib = createObj("attribute", {
-        _characterid: charId,
-        name: "type_fiche",
-        current: charType
-      });
+      writeChat("/w GM " + character.get("name") + " " + linkMsg.join(", "));
 
+      gmLinkToken(character, token);
     }
 
     /**
@@ -1185,6 +1178,7 @@ var COSH =
     /**
      * Whispers a summary sheet to GM
      * @param {Roll20Character} character Roll20 character object
+     * @returns {void}
      */
     function gmSheet(character) {
       const type = attributeValue(character, "type_personnage") || "pj";
@@ -1310,7 +1304,19 @@ var COSH =
         }
       )
 
-      sendChat(modName,"/w gm " + html);
+      writeChat("/w gm " + html);
+    }
+
+    /**
+     * Toggle tokens from gmlayer <=> objects layers
+     * @param {object[]} selectedTokens 
+     */
+    function gmToggleLayer(selectedTokens) {
+      selectedTokens.forEach(token => {
+        let layer = token.get("layer");
+        layer = (layer === "gmlayer") ? "objects" : "gmlayer";
+        token.set("layer", layer);
+      });
     }
 
     /**
@@ -1344,7 +1350,7 @@ var COSH =
         chatMsg += `[[${stat}]] `;
       }
       chatMsg += "}}";
-      sendChat(modName, chatMsg);
+      writeChat(chatMsg);
     }
 
     /**
@@ -1352,8 +1358,8 @@ var COSH =
      * @returns {string} action : macro text
      */
     function coshCreateAction() {
-      let action = "!cosh create ?{Type ?|Personnage,pj|PNJ,pnj";
-      if (state[stateKey].universe === "COG") action+="|Vaisseau,vaisseau|Mécha,mecha}";
+      let action = "!cosh gm:create ?{Type ?|Personnage,pj|PNJ,pnj";
+      if (universe("COG")) action+="|Vaisseau,vaisseau|Mécha,mecha}";
       else action+="|Véhicule,vehicule}";
       action += " ?{Nom ?}"
       return action;
@@ -1396,26 +1402,40 @@ var COSH =
 
     /**
      * Display script configuration
+     * @returns {void}
      */
     function configDisplay() {
-      let helpMsg = `/w gm &{template:default} {{name=${modName} v${modVersion} Config}}`;
-      const univ = state[stateKey].universe;
-      helpMsg += `{{Univers=*${univ}* `;
-      if (univ === "COC") {
+      let helpMsg = `/w gm &{template:default} {{name=Configuration ${modName} v${modVersion} }}`;
+      const universe = state[stateKey].universe;
+      helpMsg += ` {{Univers=*${universe}* `;
+      if (universe === "COC") {
         helpMsg += "[COG](!cosh config --universe COG)";
       } else {
         helpMsg += "[COC](!cosh config --universe COC)";
       }
-      helpMsg += `}} {{Msg privés=*${state[stateKey].whisper}* [Toggle](!cosh config --whisper)}}`;
-      helpMsg += `{{Logging=*${state[stateKey].logging}* [Toggle](!cosh config --log)}}`;
-      helpMsg += `{{Macros=[Création](!cosh config --macros)}}`;
-      sendChat(modName, helpMsg);
+      helpMsg += "}}"
+      const bubbles = [ "🟢", "🔵", "🔴" ];
+      const tokenBars = state[stateKey].tokenBars[universe];
+      for (const sheetType in tokenBars) {
+        helpMsg += `{{Barres ${sheetType.toUpperCase()}=}}`;
+        tokenBars[sheetType].forEach((attribute, index) => {
+          if (!attribute) attribute = "-n/a-";
+          const barNum = index + 1;
+          helpMsg += `{{${sheetType.slice(0,3)} ${barNum}${bubbles[index]}: ${attribute}=[Changer](!cosh config --bar|${barNum} ${sheetType}|?{Attribut ${sheetType.toUpperCase()} Barre ${barNum}}) }}`;
+        });
+      };
+      helpMsg += ` {{Msg privés=*${state[stateKey].whisper}* [Toggle](!cosh config --whisper)}}`;
+      helpMsg += ` {{Logging=*${state[stateKey].logging}* [Toggle](!cosh config --log)}}`;
+      helpMsg += ` {{Macros=[Création](!cosh config --macros)}}`;
+      writeChat(helpMsg);
     }
 
     /**
      * Process configuration command
      * !cosh config [...]
      * @param {string[]} args Chat command arguments
+     * @param {string} playerId 
+     * @returns {void}
      */
     function configSetup(args, playerId) {
       const [ option, value ] = args;
@@ -1432,6 +1452,14 @@ var COSH =
         case "--macros":
           MACROS.forEach(macro => createMacro(playerId, macro));
           break;
+        case "--bar|1":
+        case "--bar|2":
+        case "--bar|3":
+          const [ , barNum ] = option.split("|");
+          const [ sheetType, attribute ] = value.split("|");
+          const universe = state[stateKey].universe;
+          state[stateKey].tokenBars[universe][sheetType][barNum - 1] = attribute;
+          break;
         default:
           break;
       }
@@ -1439,146 +1467,115 @@ var COSH =
     }
 
     /**
-     * Check only one token is selected
-     * @param {object} msg Roll20 chat message object
-     * @param {object[]} tokens List of selected Roll20 token objects
-     * @returns Selected Roll20 token object or null if 0 or more than 1 token selected
-     */
-    function singleToken(msg, tokens) {
-      const count = tokens.length;
-      if (count != 1) {
-        sendChat(modName, "\n\rPlease select a single token first !");
-        sendLog(`Cannot execute '${msg.content}' : ${count} token(s) selected`);
-        return null;
-      }
-      return tokens[0];
-    }
-
-    /**
      * Display script help
+     * @returns {void}
      */
-    function displayHelp() {
-      let helpMsg = `/w gm &{template:default} {{name=${modName} v${modVersion} Commands Help }}`;
-      [
-        {
-          command: "!cosh",
-          description: "followed by..." 
-        },
-        {
-          command: "actions",
-          description: "To display PC/NPC actions menus in chat",
-        },
-        {
-          command: "config",
-          description: "To configure the script"
-        },
-        {
-          command: "debug",
-          description: "To send token object data to API console",
-        },
-        {
-          command: "gmsheet",
-          description: "To display a summary stat-block in the chat",
-        },
-        {
-          command: "token",
-          description: "To set/unset token markers"
-        },
-        {
-          command: "stats",
-          description: "To roll PC stats"
-        },
-      ].forEach((help) => {
+    function displayHelp(option) {
+      let helpMsg = `/w gm &{template:default} {{name=Aide commandes ${modName} v${modVersion} }}`;
+
+      const help = {
+        general: [
+          {
+            command: "!cosh",
+            description: "suivi de..." 
+          },
+          {
+            command: "actions",
+            description: "Pour afficher un menu de boutons d'action dans le chat",
+          },
+          {
+            command: "config",
+            description: "Pour configurer le script MOD"
+          },
+          {
+            command: "debug",
+            description: "Pour envoyer des données de debug à la console API",
+          },
+          {
+            command: "gm:bars",
+            description: "Pour lier les barres de token à la fiche de personnage",
+          },
+          {
+            command: "gm:create",
+            description: "Pour créer une fiche de personnage et la lier au token sélectionné"
+          },
+          {
+            command: "gm:sheet",
+            description: "Pour afficher dans le chat au MJ un stat-block résumé de la fiche",
+          },
+          {
+            command: "stats",
+            description: "Pour faire un tirage de caractéristiques"
+          },
+          {
+            command: "token",
+            description: "Pour ajouter/retirer des marqueurs au token"
+          },
+        ],
+        actions: [
+          {
+            command: "!cosh actions ",
+            description: "suivi de..." 
+          },
+          {
+            command: "--attaques",
+            description: "Pour afficher un menu de chat des attaques/armes"
+          },
+          {
+            command: "--voies",
+            description: "Pour afficher un menu de chat des voies"
+          },
+          {
+            command: "--voie {n}",
+            description: "Pour afficher un menu de chat des capacités de la voie no {n}"
+          },
+          {
+            command: "--competences",
+            description: "Pour afficher un menu de chat des jets de capacités"
+          }
+        ]
+      };
+      
+      let helpList = help[option];
+      if (!helpList) helpList = help.general;
+
+      helpList.forEach((help) => {
         helpMsg += `{{${help.command}=${help.description} }}`;
       });
-      sendChat(modName, helpMsg);
+      writeChat(helpMsg);
     }
 
     /**
-     * Process API chat commands
-     * @param {object} msg Roll20 chat message object
-     *
-     * !cosh action <...args...>
+     * Migrate state schema to v1.40
      */
-    function processCmd(msg) {
-      // parse chat message
-      // cmd : command entered
-      // args[] : list of arguments
-      msg.content = msg.content.replace(/\s+/g, " "); //remove duplicate whites
-      const [ cmd, action, ...args ] = msg.content.split(" ");
-      const tokens = getTokens(msg);
-      let character = null;
-      let token = null;
-
-      switch (action) {
-        case "debug":
-          sendLog(msg.content);
-          sendLog(singleToken(msg, tokens));
-          sendChat(modName, "/w gm Token data dumped to console");
-          break;
-        case "config":
-          configSetup(args, msg.playerid);
-          break;
-        case "actions":
-          character = getCharacter(getCharacterId(args));
-          // check if token selected
-          if (!character) {
-            token = singleToken(msg, tokens);
-            if (!token) {
-              break;
-            }
-            character = getCharacterFromToken(token);
-          }
-          // display character's action
-          if (character) {
-            displayActions(character.id, args);
-          } else {
-            sendChat(modName, "\n\rPlease select a PC or NPC token first !");
-            sendLog(
-              `Cannot execute '${msg.content}' : token not associated with a journal item`, 
-              false
-            );
-          }
-          break;
-        case "create":
-          createSheet(args);
-          break;
-        case "gmsheet":
-          token = singleToken(msg, tokens);
-          if (!token) {
-            break;
-          }
-          character = getCharacterFromToken(token);
-          gmSheet(character);
-          break;
-        case "token":
-          token = singleToken(msg, tokens);
-          if (!token) {
-            break;
-          }
-          character = getCharacterFromToken(token);
-          tokenMarkers(token, character, args);
-          break;
-        case "stats":
-          rollStats(args);
-          break;
-        default:
-          displayHelp();
-          break;
+    function migrateToVersion1_40() {
+      if (!state[stateKey].tokenBars) {
+        state[stateKey].tokenBars = TOKENBARS;
       }
-      return;
     }
 
+    /**
+     * Update state version / schema
+     * @returns {void}
+     */
     function migrateState() {
+      const version = parseFloat(state[stateKey].version);
+
+      if (version < 1.49) migrateToVersion1_40();
+      
       state[stateKey].version = modVersion;
     }
 
+    /**
+     * Create the MOD script's help handout
+     * @returns {void}
+     */
     function helpHandout() {
       let [ helpHandout ] = findObjs({
         _type:	"handout",
         name: modHelpHandout
       });
-      if (helpHandout === undefined) {
+      if (!helpHandout) {
         helpHandout = createObj("handout", {
           name: modHelpHandout,
         });
@@ -1593,6 +1590,12 @@ var COSH =
       });
     }
 
+    /**
+     * Check optional scripts dependencies
+     * Check and update script state schema
+     * Create help handout
+     * @returns {void}
+     */
     function checkInstall() {
       if (!state[stateKey] || !Object.keys(state[stateKey]).includes("version")) {
         state[stateKey] = modState;
@@ -1600,16 +1603,16 @@ var COSH =
       }
 
       const hasCOGCrew = typeof COGCrew === "object";
-      sendLog(`API Mod hasCOGCrew${hasCOGCrew ? " " : " not "}detected`);
+      writeLog(`API Mod hasCOGCrew${hasCOGCrew ? " " : " not "}detected`);
       state[stateKey].hasCOGCrew = hasCOGCrew;
       if (hasCOGCrew) state[stateKey].universe = "COG";
 
       const hasChatSetAttr = typeof ChatSetAttr === "object";
-      sendLog(`API Mod ChatSetAttr${hasChatSetAttr ? " " : " not "}detected`);
+      writeLog(`API Mod ChatSetAttr${hasChatSetAttr ? " " : " not "}detected`);
       state[stateKey].hasChatSetAttr = hasChatSetAttr;
 
       const hasTokenMod = typeof TokenMod === "object";
-      sendLog(`API Mod TokenMod${hasTokenMod ? " " : " not "}detected`);
+      writeLog(`API Mod TokenMod${hasTokenMod ? " " : " not "}detected`);
       state[stateKey].hasTokenMod = hasTokenMod;
 
       if (state[stateKey].version !== modVersion) {
@@ -1618,24 +1621,64 @@ var COSH =
 
       helpHandout();
 
-      sendLog(state[stateKey]);
+      writeLog(state[stateKey]);
+    }
+
+    /**
+     * Return contrasted color
+     * @param {string} hexColor 
+     * @param {boolean} blackOrWhite 
+     * @returns {string}
+     */
+    function invertColor(hexColor, blackOrWhite = false) {
+      if (!hexColor) return;
+
+      if (hexColor.indexOf('#') === 0) {
+          hexColor = hexColor.slice(1);
+      }
+      // convert 3-digit hex to 6-digits
+      if (hexColor.length === 3) {
+          hexColor = hexColor[0] + hexColor[0] + hexColor[1] + hexColor[1] + hexColor[2] + hexColor[2];
+      }
+      if (hexColor.length !== 6) {
+          log('Invalid HEX color');
+          return "";
+      }
+      let r = parseInt(hexColor.slice(0, 2), 16),
+          g = parseInt(hexColor.slice(2, 4), 16),
+          b = parseInt(hexColor.slice(4, 6), 16);
+
+      if (blackOrWhite) {
+          // https://stackoverflow.com/a/3943023/112731
+          return (r * 0.299 + g * 0.587 + b * 0.114) > 186
+              ? '#000000'
+              : '#FFFFFF';
+      }
+      // invert color components
+      r = (255 - r).toString(16);
+      g = (255 - g).toString(16);
+      b = (255 - b).toString(16);
+      // pad each with zeros and return
+      return "#" + ("0" + r).slice(-2) + ("0" + g).slice(-2) + ("0" + b).slice(-2);
     }
 
     /**
      * Setup configuration for player
      * @param {object} msg Roll20 message object
+     * @returns {void}
      */
     function playerSetup(msg) {
-            
-      // get player color
       const [ player ] = findObjs({
         _type: "player",
         _id: msg.playerid
       });
       if (player && player.color !== "transparent") {
         const backColor = player.get("color");
+        const textColor = invertColor(backColor, true);
         buttonClasses.transparent.backgroundColor = backColor;
+        buttonClasses.transparent.color = textColor;
         buttonClasses.flat.backgroundColor = backColor;
+        buttonClasses.flat.color = textColor
       }
 
     }
@@ -1643,21 +1686,87 @@ var COSH =
     /**
      * Handle chat messages
      * @param {object} msg Roll20 chat message object
+     * @returns {void}
      */
     function handleInput(msg) {
 
+      const isGM = playerIsGM(msg.playerid);
       playerSetup(msg);
 
       // process API commands
-      const [ cmd ] = msg.content.replace(/<br\/>/g, "").split(/\s+/);
-      if (msg.type === "api" && cmd.indexOf(modCmd) === 0) {
-        processCmd(msg);
+      const message = msg.content.replace(/<br\/>/g, "");
+      const [ command, option, ...args ] = message.split(/\s+/);
+      if (msg.type !== "api" || command !== modCmd) return;
+      
+      if (option && option.split(":")[0] === "gm" && !isGM) {
+        writeChat("You must be GM to run this command !");
+        return;
       }
 
+      const selectedTokens = getTokens(msg);
+      const [ selectedToken ] = selectedTokens;
+      const selectedCharacter = selectedToken ? getCharacterFromToken(selectedToken) : null;
+
+      switch (option) {
+        case "actions":
+          const character = getCharacter(getCharacterId(args)) || selectedCharacter;
+          if (character) {
+            displayActions(character.id, args);
+          } else {
+            writeLog(
+              `Cannot execute '${message}' : token not associated with a journal item`, 
+              false
+            );
+            writeChat("\n\rPlease select a PC or NPC token first !");
+          }
+          break;
+        case "config":
+          configSetup(args, msg.playerid);
+          break;
+        case "debug":
+          writeLog("=== TOKEN ===");
+          writeLog(selectedToken);
+          writeLog("=== CHARACTER ===");
+          writeLog(selectedCharacter);
+          selectedCharacter.get("_defaulttoken", blob => {
+            writeLog("=== DEFAULT TOKEN ===");
+            writeLog(blob);
+          });
+          writeChat("/w gm Token data dumped to console");
+          break;
+        case "gm:bars":
+          if (!selectedToken || !selectedCharacter) break;
+          const mook = args[0] && args[0].toLowerCase() === "--mook";
+          gmLinkTokenBars(selectedToken, selectedCharacter, mook);
+          break;
+        case "gm:create":
+          const newCharacter = gmCreateSheet(args);
+          if (newCharacter && selectedToken) {
+            gmLinkToken(newCharacter, selectedToken);
+          }
+          break;                  
+        case "gm:sheet":
+          if (selectedCharacter) gmSheet(selectedCharacter);
+          break;
+        case "gm:layer":
+          if (selectedTokens.length > 0) gmToggleLayer(selectedTokens);
+          break;
+        case "stats":
+          rollStats(args);
+          break;
+        case "token":
+          if (!selectedToken || !selectedCharacter) break;
+          tokenMarkers(selectedToken, selectedCharacter, args);
+          break;
+        default:
+          displayHelp(args[0]);
+          break;
+      }
     }
 
     /**
      * Send ready message to chat
+     * @returns {void}
      */
     function readyMessage() {
 
@@ -1670,10 +1779,15 @@ var COSH =
           borderRadius: "5px",
         }),
       });
-      sendChat(modName, "/w gm " + html);
+      writeChat("/w gm " + html);
 
     }
 
+    /**
+     * Register event handlers 
+     * - for chat message
+     * @returns {void}
+     */
     function registerEventHandlers() {
 
       /**
